@@ -58,10 +58,12 @@ func assertConditionChanged(t *testing.T, condition Condition, ctx string, f fun
 
 func TestManualCondition(t *testing.T) {
 	condition := NewManualCondition(false)
+	defer condition.Close()
 	assertConditionUnsatisfied(t, condition, "initialization to false")
 	assertConditionUnchanged(t, condition, "initialization to false")
 
 	condition = NewManualCondition(true)
+	defer condition.Close()
 	assertConditionSatisfied(t, condition, "initialization to true")
 	assertConditionUnchanged(t, condition, "initialization to true")
 
@@ -83,5 +85,26 @@ func TestManualCondition(t *testing.T) {
 
 func TestEmptyCompositeConditionAnd(t *testing.T) {
 	condition := NewCompositeCondition(OperatorAnd)
+	defer condition.Close()
+	assertConditionSatisfied(t, condition, "empty initialization")
+}
+
+func TestCompositeConditionAnd(t *testing.T) {
+	a := NewManualCondition(false)
+	defer a.Close()
+	b := NewManualCondition(false)
+	defer b.Close()
+	condition := NewCompositeCondition(OperatorAnd, a, b)
+	defer condition.Close()
 	assertConditionUnsatisfied(t, condition, "empty initialization")
+
+	a.Set(true)
+	assertConditionUnsatisfied(t, condition, "a was set")
+
+	b.Set(true)
+	time.Sleep(time.Second)
+	assertConditionSatisfied(t, condition, "b was set")
+
+	a.Set(false)
+	assertConditionUnsatisfied(t, condition, "a was unset")
 }

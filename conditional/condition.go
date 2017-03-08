@@ -1,7 +1,7 @@
 package conditional
 
 import (
-	"runtime"
+	"reflect"
 	"sync"
 )
 
@@ -10,6 +10,8 @@ type Condition interface {
 	Satisfied() <-chan struct{}
 	Unsatisfied() <-chan struct{}
 	Changed() <-chan struct{}
+	Bool() bool
+	Close() error
 }
 
 // ManualCondition is a condition that can be set or unset explicitely.
@@ -63,6 +65,37 @@ func (c *ManualCondition) Changed() <-chan struct{} {
 	}
 }
 
+// Bool returns the condition current satisfied state.
+func (c *ManualCondition) Bool() bool {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	select {
+	case <-c.satisfied:
+		return true
+	case <-c.unsatisfied:
+		return false
+	}
+}
+
+// Close closes the condition.
+//
+// It is not specified what happens if there are pending calls on the condition
+// while it is being closed.
+func (c *ManualCondition) Close() error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	select {
+	case <-c.satisfied:
+		close(c.unsatisfied)
+	case <-c.unsatisfied:
+		close(c.satisfied)
+	}
+
+	return nil
+}
+
 // Set the condition satisfied state explicitely.
 func (c *ManualCondition) Set(satisfied bool) {
 	c.lock.Lock()
@@ -92,6 +125,7 @@ type CompositeCondition struct {
 	condition     ManualCondition
 	operator      CompositeOperator
 	subconditions []Condition
+	stop          chan struct{}
 }
 
 // CompositeOperator represents an operator to use in CompositeConditions.
@@ -120,24 +154,33 @@ func NewCompositeCondition(operator CompositeOperator, conditions ...Condition) 
 		condition:     *NewManualCondition(operator.Reduce(conditions)),
 		operator:      operator,
 		subconditions: conditions,
+		stop:          make(chan struct{}),
 	}
 
-	runtime.SetFinalizer(condition, nil)
+	go condition.watchConditions()
 
 	return condition
 }
 
-//func (c *CompositeCondition) watchConditions(stop <-chan struct{}) {
-//	type condition struct {
-//		condition Condition
-//		satisfied bool
-//	}
-//
-//	changed := make(chan condition)
-//
-//	for _, condition := range c.subconditions {
-//	}
-//}
+func (c *CompositeCondition) watchConditions() {
+	for {
+		cases := make([]reflect.SelectCase, len(c.subconditions)+1)
+		cases[0] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(c.stop)}
+
+		for i, condition := range c.subconditions {
+			cases[i+1] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(condition.Changed())}
+		}
+
+		// ok will be true if the channel has not been closed.
+		chosen, _, _ := reflect.Select(cases)
+
+		if chosen == 0 {
+			return
+		}
+
+		c.condition.Set(c.operator.Reduce(c.subconditions))
+	}
+}
 
 // Satisfied blocks until the condition is satisfied.
 func (c *CompositeCondition) Satisfied() <-chan struct{} {
@@ -154,20 +197,59 @@ func (c *CompositeCondition) Changed() <-chan struct{} {
 	return c.condition.Changed()
 }
 
+// Bool returns the condition current satisfied state.
+func (c *CompositeCondition) Bool() bool {
+	return c.condition.Bool()
+}
+
+// Close closes the condition.
+//
+// It is not specified what happens if there are pending calls on the condition
+// while it is being closed.
+func (c *CompositeCondition) Close() error {
+	close(c.stop)
+
+	return c.condition.Close()
+}
+
 type operatorAnd struct{}
 
 func (o operatorAnd) Reduce(conditions []Condition) bool {
-	return false
+	for _, condition := range conditions {
+		if !condition.Bool() {
+			return false
+		}
+	}
+
+	return true
 }
 
 type operatorOr struct{}
 
 func (o operatorOr) Reduce(conditions []Condition) bool {
+	for _, condition := range conditions {
+		if condition.Bool() {
+			return true
+		}
+	}
+
 	return false
 }
 
 type operatorXor struct{}
 
 func (o operatorXor) Reduce(conditions []Condition) bool {
-	return false
+	result := false
+
+	for _, condition := range conditions {
+		if condition.Bool() {
+			if result {
+				return false
+			} else {
+				result = true
+			}
+		}
+	}
+
+	return result
 }
