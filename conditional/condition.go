@@ -123,12 +123,17 @@ func NewCompositeCondition(operator CompositeOperator, conditions ...Condition) 
 	return condition
 }
 
-func (c *CompositeCondition) watchConditions(stop <-chan struct{}) {
-	changed := make(chan struct{})
-
-	for _, condition := range c.subconditions {
-	}
-}
+//func (c *CompositeCondition) watchConditions(stop <-chan struct{}) {
+//	type condition struct {
+//		condition Condition
+//		satisfied bool
+//	}
+//
+//	changed := make(chan condition)
+//
+//	for _, condition := range c.subconditions {
+//	}
+//}
 
 // Satisfied blocks until the condition is satisfied.
 func (c *CompositeCondition) Satisfied() <-chan struct{} {

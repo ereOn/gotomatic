@@ -36,6 +36,7 @@ func assertConditionUnchanged(t *testing.T, condition Condition, ctx string) {
 
 func assertConditionChanged(t *testing.T, condition Condition, ctx string, f func()) {
 	timeout, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*3))
+	defer cancel()
 	changed := condition.Changed()
 	result := make(chan bool)
 
@@ -50,9 +51,7 @@ func assertConditionChanged(t *testing.T, condition Condition, ctx string, f fun
 
 	f()
 
-	if <-result {
-		cancel()
-	} else {
+	if !<-result {
 		t.Errorf("condition should have changed after %s", ctx)
 	}
 }
