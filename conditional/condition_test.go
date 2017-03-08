@@ -1,6 +1,10 @@
 package conditional
 
-import "testing"
+import (
+	"context"
+	"testing"
+	"time"
+)
 
 func assertConditionSatisfied(t *testing.T, condition Condition, ctx string) {
 	select {
@@ -22,12 +26,45 @@ func assertConditionUnsatisfied(t *testing.T, condition Condition, ctx string) {
 	}
 }
 
+func assertConditionUnchanged(t *testing.T, condition Condition, ctx string) {
+	select {
+	case <-condition.Changed():
+		t.Errorf("condition should not have changed after %s", ctx)
+	default:
+	}
+}
+
+func assertConditionChanged(t *testing.T, condition Condition, ctx string, f func()) {
+	timeout, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*3))
+	changed := condition.Changed()
+	result := make(chan bool)
+
+	go func() {
+		select {
+		case <-changed:
+			result <- true
+		case <-timeout.Done():
+			result <- false
+		}
+	}()
+
+	f()
+
+	if <-result {
+		cancel()
+	} else {
+		t.Errorf("condition should have changed after %s", ctx)
+	}
+}
+
 func TestManualCondition(t *testing.T) {
 	condition := NewManualCondition(false)
 	assertConditionUnsatisfied(t, condition, "initialization to false")
+	assertConditionUnchanged(t, condition, "initialization to false")
 
 	condition = NewManualCondition(true)
 	assertConditionSatisfied(t, condition, "initialization to true")
+	assertConditionUnchanged(t, condition, "initialization to true")
 
 	condition.Set(true)
 	assertConditionSatisfied(t, condition, "first set to true")
@@ -40,4 +77,12 @@ func TestManualCondition(t *testing.T) {
 
 	condition.Set(true)
 	assertConditionSatisfied(t, condition, "fourth set to true")
+
+	assertConditionChanged(t, condition, "fifth set to false", func() { condition.Set(false) })
+	assertConditionChanged(t, condition, "sixth set to true", func() { condition.Set(true) })
+}
+
+func TestEmptyCompositeConditionAnd(t *testing.T) {
+	condition := NewCompositeCondition(OperatorAnd)
+	assertConditionUnsatisfied(t, condition, "empty initialization")
 }
