@@ -14,7 +14,7 @@ type Condition interface {
 
 // ManualCondition is a condition that can be set or unset explicitely.
 type ManualCondition struct {
-	lock        sync.Mutex
+	lock        sync.RWMutex
 	satisfied   chan struct{}
 	unsatisfied chan struct{}
 }
@@ -38,18 +38,22 @@ func NewManualCondition(satisfied bool) *ManualCondition {
 
 // Satisfied blocks until the condition is satisfied.
 func (c *ManualCondition) Satisfied() <-chan struct{} {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	return c.satisfied
 }
 
 // Unsatisfied blocks until the condition is unsatisfied.
 func (c *ManualCondition) Unsatisfied() <-chan struct{} {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	return c.unsatisfied
 }
 
 // Changed blocks until the condition is satisfied state changes.
 func (c *ManualCondition) Changed() <-chan struct{} {
-	c.lock.Lock()
-	defer c.lock.Unlock()
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 
 	select {
 	case <-c.satisfied:
