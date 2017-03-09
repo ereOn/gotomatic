@@ -8,7 +8,7 @@ lint:
 	go vet ./conditional
 
 test:
-	go test --race --coverprofile coverage ./conditional
+	go test -v --race --coverprofile coverage ./conditional
 	go tool cover -func=coverage
 
 coverage: test
