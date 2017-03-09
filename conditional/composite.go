@@ -4,7 +4,7 @@ import "reflect"
 
 // CompositeCondition represents an aggregation of Conditions.
 type CompositeCondition struct {
-	condition     ManualCondition
+	Condition
 	operator      CompositeOperator
 	subconditions []Condition
 	stop          chan struct{}
@@ -37,7 +37,7 @@ func NewCompositeCondition(operator CompositeOperator, conditions ...Condition) 
 	}
 
 	condition := &CompositeCondition{
-		condition:     *NewManualCondition(false),
+		Condition:     NewManualCondition(false),
 		operator:      operator,
 		subconditions: conditions,
 		stop:          make(chan struct{}),
@@ -48,21 +48,6 @@ func NewCompositeCondition(operator CompositeOperator, conditions ...Condition) 
 	<-ready
 
 	return condition
-}
-
-// Wait returns a channel that blocks until the condition reaches the
-// specified satisfied state.
-//
-// If the condition already has the satisfied state at the moment of the
-// call, a closed channel is returned (which won't block).
-func (c *CompositeCondition) Wait(satisfied bool) <-chan struct{} {
-	return c.condition.Wait(satisfied)
-}
-
-// GetAndWaitChange returns the current satisfied state of the condition as
-// well as a channel that will block until the condition state changes.
-func (c *CompositeCondition) GetAndWaitChange() (bool, <-chan struct{}) {
-	return c.condition.GetAndWaitChange()
 }
 
 // Close terminates the condition.
@@ -82,7 +67,7 @@ func (c *CompositeCondition) Close() error {
 		condition.Close()
 	}
 
-	return c.condition.Close()
+	return c.Condition.Close()
 }
 
 func (c *CompositeCondition) watchConditions(ready chan struct{}) {
@@ -98,7 +83,7 @@ func (c *CompositeCondition) watchConditions(ready chan struct{}) {
 		}
 
 		cases[count] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(c.stop)}
-		c.condition.Set(c.operator.Reduce(values))
+		c.Condition.(*ManualCondition).Set(c.operator.Reduce(values))
 		close(ready)
 
 		for {
@@ -112,7 +97,7 @@ func (c *CompositeCondition) watchConditions(ready chan struct{}) {
 			value, channel := condition.GetAndWaitChange()
 			values[chosen] = value
 			cases[chosen] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(channel)}
-			c.condition.Set(c.operator.Reduce(values))
+			c.Condition.(*ManualCondition).Set(c.operator.Reduce(values))
 		}
 	}
 }
