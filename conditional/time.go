@@ -24,8 +24,19 @@ type TimeCondition struct {
 	Condition
 	TimeRange TimeRange
 	timeFunc  func() time.Time
-	timerFunc func(time.Duration) *time.Timer
+	sleepFunc func(time.Duration, <-chan struct{})
 	done      chan struct{}
+}
+
+func sleep(duration time.Duration, interrupt <-chan struct{}) {
+	timer := time.NewTimer(duration)
+
+	select {
+	case <-timer.C:
+	case <-interrupt:
+		timer.Stop()
+		break
+	}
 }
 
 // NewTimeCondition instantiates a new TimeCondition.
@@ -33,7 +44,7 @@ func NewTimeCondition(timeRange TimeRange, options ...TimeConditionOption) *Time
 	condition := &TimeCondition{
 		TimeRange: timeRange,
 		timeFunc:  time.Now,
-		timerFunc: time.NewTimer,
+		sleepFunc: sleep,
 		done:      make(chan struct{}),
 	}
 
@@ -62,12 +73,13 @@ func (o TimeFunctionOption) apply(condition *TimeCondition) {
 	condition.timeFunc = o.TimeFunction
 }
 
-type timerFunctionOption struct {
-	TimerFunction func(time.Duration) *time.Timer
+// SleepFunctionOption defines the sleep function used by a TimeCondition.
+type SleepFunctionOption struct {
+	SleepFunction func(time.Duration, <-chan struct{})
 }
 
-func (o timerFunctionOption) apply(condition *TimeCondition) {
-	condition.timerFunc = o.TimerFunction
+func (o SleepFunctionOption) apply(condition *TimeCondition) {
+	condition.sleepFunc = o.SleepFunction
 }
 
 func (condition *TimeCondition) Close() error {
@@ -92,14 +104,7 @@ func (condition *TimeCondition) checkTime() error {
 			condition.Condition.(*ManualCondition).Set(false)
 		}
 
-		timer := condition.timerFunc(next.Sub(now))
-
-		select {
-		case <-timer.C:
-		case <-condition.done:
-			timer.Stop()
-			break
-		}
+		condition.sleepFunc(next.Sub(now), condition.done)
 	}
 }
 

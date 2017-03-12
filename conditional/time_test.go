@@ -7,14 +7,15 @@ import (
 	"time"
 )
 
+func TestSleep(t *testing.T) {
+	interrupt := make(chan struct{})
+	sleep(0, interrupt)
+	close(interrupt)
+	sleep(time.Second, interrupt)
+}
+
 func TestTimeCondition(t *testing.T) {
 	now := time.Date(2017, 3, 9, 11, 59, 59, 0, time.Local)
-	channel := make(chan time.Time)
-	close(channel)
-	timer := time.Timer{
-		C: channel,
-	}
-
 	dayTimeRange := DayTimeRange{
 		Start: NewDayTime(12, 0, 0),
 		Stop:  NewDayTime(12, 0, 1),
@@ -24,8 +25,8 @@ func TestTimeCondition(t *testing.T) {
 		TimeFunctionOption{
 			TimeFunction: func() time.Time { return now },
 		},
-		timerFunctionOption{
-			TimerFunction: func(time.Duration) *time.Timer { return &timer },
+		SleepFunctionOption{
+			SleepFunction: func(time.Duration, <-chan struct{}) {},
 		},
 	)
 	defer condition.Close()
