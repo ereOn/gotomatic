@@ -1,6 +1,9 @@
 package conditional
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // TimeRange represents a time range.
 type TimeRange interface {
@@ -16,24 +19,55 @@ type TimeRange interface {
 }
 
 // TimeCondition represents a condition that is met as long as the current time
-// is in all the associated ranges.
+// is in the specified range.
 type TimeCondition struct {
 	Condition
-	Ranges []TimeRange
-	done   chan struct{}
+	TimeRange TimeRange
+	timeFunc  func() time.Time
+	timerFunc func(time.Duration) *time.Timer
+	done      chan struct{}
 }
 
 // NewTimeCondition instantiates a new TimeCondition.
-func NewTimeCondition(ranges ...TimeRange) *TimeCondition {
+func NewTimeCondition(timeRange TimeRange, options ...TimeConditionOption) *TimeCondition {
 	condition := &TimeCondition{
-		Condition: NewManualCondition(false),
-		Ranges:    ranges,
+		TimeRange: timeRange,
+		timeFunc:  time.Now,
+		timerFunc: time.NewTimer,
 		done:      make(chan struct{}),
 	}
+
+	for _, option := range options {
+		option.apply(condition)
+	}
+
+	condition.Condition = NewManualCondition(timeRange.Contains(condition.timeFunc()))
 
 	go condition.checkTime()
 
 	return condition
+}
+
+// TimeConditionOption represents an option for a TimeCondition.
+type TimeConditionOption interface {
+	apply(condition *TimeCondition)
+}
+
+// TimeFunctionOption defines the time function used by a TimeCondition.
+type TimeFunctionOption struct {
+	TimeFunction func() time.Time
+}
+
+func (o TimeFunctionOption) apply(condition *TimeCondition) {
+	condition.timeFunc = o.TimeFunction
+}
+
+type timerFunctionOption struct {
+	TimerFunction func(time.Duration) *time.Timer
+}
+
+func (o timerFunctionOption) apply(condition *TimeCondition) {
+	condition.timerFunc = o.TimerFunction
 }
 
 func (condition *TimeCondition) Close() error {
@@ -47,28 +81,18 @@ func (condition *TimeCondition) Close() error {
 
 func (condition *TimeCondition) checkTime() error {
 	for {
-		now := time.Now()
-		later := now
-		satisfied := true
+		now := condition.timeFunc()
+		var next time.Time
 
-		for _, range_ := range condition.Ranges {
-			var next time.Time
-
-			if range_.Contains(now) {
-				next = range_.NextStop(now)
-			} else {
-				satisfied = false
-				next = range_.NextStart(now)
-			}
-
-			if next.Before(later) {
-				later = next
-			}
+		if condition.TimeRange.Contains(now) {
+			next = condition.TimeRange.NextStop(now)
+			condition.Condition.(*ManualCondition).Set(true)
+		} else {
+			next = condition.TimeRange.NextStart(now)
+			condition.Condition.(*ManualCondition).Set(false)
 		}
 
-		// If later == now, we are in the ranges so we set to true.
-		condition.Condition.(*ManualCondition).Set(satisfied)
-		timer := time.NewTimer(later.Sub(now))
+		timer := condition.timerFunc(next.Sub(now))
 
 		select {
 		case <-timer.C:
@@ -79,64 +103,87 @@ func (condition *TimeCondition) checkTime() error {
 	}
 }
 
-// TimeOfDay represents a time in a day.
-type TimeOfDay time.Duration
+// DayTime represent at time of the day.
+type DayTime time.Duration
 
-// ToTimeOfDay converts a time.Time to a TimeOfDay.
-func ToTimeOfDay(t time.Time) TimeOfDay {
-	hour := time.Duration(t.Hour()) * time.Hour
-	minute := time.Duration(t.Minute()) * time.Minute
-	second := time.Duration(t.Second()) * time.Second
-
-	return TimeOfDay(hour + minute + second)
+// NewDayTime creates a DayTime instance for its hour, minute and second parts.
+func NewDayTime(hour int, minute int, second int) DayTime {
+	return DayTime(
+		time.Duration(hour)*time.Hour +
+			time.Duration(minute)*time.Minute +
+			time.Duration(second)*time.Second,
+	)
 }
 
-// Before returns true if the time of day is before the specified time.
-func (t TimeOfDay) Before(td TimeOfDay) bool {
-	return time.Duration(t).Seconds() < time.Duration(td).Seconds()
+// Hour returns the hour of the DayTime.
+func (d DayTime) Hour() int {
+	return int(time.Duration(d) / time.Hour)
 }
 
-// After returns true if the time of day is after or eauql to the specified time.
-func (t TimeOfDay) After(td TimeOfDay) bool {
-	return time.Duration(t).Seconds() >= time.Duration(td).Seconds()
+// Hour returns the hour of the DayTime.
+func (d DayTime) Minute() int {
+	hours := time.Duration(d.Hour()) * time.Hour
+	return int((time.Duration(d) - hours) / time.Minute)
 }
 
-// DayRange represents a range of hours in a day.
-type DayRange struct {
-	Start TimeOfDay
-	Stop  TimeOfDay
+// Hour returns the hour of the DayTime.
+func (d DayTime) Second() int {
+	hours := time.Duration(d.Hour()) * time.Hour
+	minutes := time.Duration(d.Minute()) * time.Minute
+	return int((time.Duration(d) - hours - minutes) / time.Second)
+}
+
+// String returns the string representation of the DayTime.
+func (d DayTime) String() string {
+	return fmt.Sprintf("%02d:%02d:%02d", d.Hour(), d.Minute(), d.Second())
+}
+
+// DayTimeRange represents a range of hours within a day.
+//
+// If Start happens after Stop, the range will represents all hours *NOT*
+// between Start and Stop. For instance, if Start is 16:00:00 and Stop is
+// 12:00:00, the range represents all hours of the day before 12:00:00 and
+// after 16:00:00.
+type DayTimeRange struct {
+	Start DayTime
+	Stop  DayTime
 }
 
 // Contains returns true if the specified time is contained in the range,
 // false otherwise.
-func (r DayRange) Contains(t time.Time) bool {
-	td := ToTimeOfDay(t)
+func (r DayTimeRange) Contains(t time.Time) bool {
+	dayTime := NewDayTime(t.Clock())
 
-	if r.Start.Before(r.Stop) {
-		return td.After(r.Start) && td.Before(r.Stop)
+	if r.Start < r.Stop {
+		return r.Start <= dayTime && dayTime < r.Stop
 	} else {
-		return td.Before(r.Start) || td.After(r.Stop)
+		return dayTime < r.Stop || dayTime >= r.Start
 	}
+}
+
+func next(t time.Time, ref DayTime) time.Time {
+	year, month, day := t.Date()
+	dayTime := NewDayTime(t.Clock())
+
+	if dayTime < ref {
+		return time.Date(year, month, day, ref.Hour(), ref.Minute(), ref.Second(), 0, t.Location())
+
+	}
+
+	return time.Date(year, month, day+1, ref.Hour(), ref.Minute(), ref.Second(), 0, t.Location())
 }
 
 // Next returns the next time that will start the range.
-func (r DayRange) NextStart(t time.Time) time.Time {
-	td := ToTimeOfDay(t)
-
-	if td.Before(r.Start) {
-		return t.Add(time.Duration(r.Start) - time.Duration(td))
-	} else {
-		return t.Add(time.Duration(td) - time.Duration(r.Start) + time.Hour*24)
-	}
+func (r DayTimeRange) NextStart(t time.Time) time.Time {
+	return next(t, r.Start)
 }
 
 // Next returns the next time that will stop the range.
-func (r DayRange) NextStop(t time.Time) time.Time {
-	td := ToTimeOfDay(t)
+func (r DayTimeRange) NextStop(t time.Time) time.Time {
+	return next(t, r.Stop)
+}
 
-	if td.Before(r.Stop) {
-		return t.Add(time.Duration(r.Stop) - time.Duration(td))
-	} else {
-		return t.Add(time.Duration(td) - time.Duration(r.Stop) + time.Hour*24)
-	}
+// String returns the string representation of the DayTimeRange.
+func (d DayTimeRange) String() string {
+	return fmt.Sprintf("between %s and %s", d.Start, d.Stop)
 }
