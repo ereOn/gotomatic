@@ -2,6 +2,7 @@ package conditional
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -191,4 +192,81 @@ func (r DayTimeRange) NextStop(t time.Time) time.Time {
 // String returns the string representation of the DayTimeRange.
 func (d DayTimeRange) String() string {
 	return fmt.Sprintf("between %s and %s", d.Start, d.Stop)
+}
+
+// WeekdaysRange represents a range of days within a week.
+type WeekdaysRange struct {
+	Weekdays Weekdays
+}
+
+// Weekdays represents a list of week days.
+type Weekdays []time.Weekday
+
+// Contains returns true if the specified weekday is in the weekdays list.
+func (w Weekdays) Contains(weekday time.Weekday) bool {
+	for _, wd := range w {
+		if wd == weekday {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Contains returns true if the specified time is contained in the range,
+// false otherwise.
+func (r WeekdaysRange) Contains(t time.Time) bool {
+	return r.Weekdays.Contains(t.Weekday())
+}
+
+// Next returns the next time that will start the range.
+func (r WeekdaysRange) NextStart(t time.Time) time.Time {
+	year, month, day := t.Date()
+	currentWeekday := t.Weekday()
+
+	if r.Contains(t) {
+		return r.NextStart(r.NextStop(t))
+	}
+
+	var result time.Time
+
+	for weekday := currentWeekday + 1; weekday <= currentWeekday+7; weekday = weekday + 1 {
+		if r.Weekdays.Contains(weekday) {
+			result = time.Date(year, month, day+int(weekday-currentWeekday), 0, 0, 0, 0, t.Location())
+			break
+		}
+	}
+
+	return result
+}
+
+// Next returns the next time that will stop the range.
+func (r WeekdaysRange) NextStop(t time.Time) time.Time {
+	year, month, day := t.Date()
+	currentWeekday := t.Weekday()
+
+	if !r.Contains(t) {
+		return r.NextStop(r.NextStart(t))
+	}
+	var result time.Time
+
+	for weekday := currentWeekday + 1; weekday <= currentWeekday+7; weekday = weekday + 1 {
+		if !r.Weekdays.Contains(weekday) {
+			result = time.Date(year, month, day+int(weekday-currentWeekday), 0, 0, 0, 0, t.Location())
+			break
+		}
+	}
+
+	return result
+}
+
+// String returns the string representation of the WeekdaysRange.
+func (d WeekdaysRange) String() string {
+	s := make([]string, len(d.Weekdays), len(d.Weekdays))
+
+	for i, wd := range d.Weekdays {
+		s[i] = wd.String()
+	}
+
+	return strings.Join(s, ", ")
 }

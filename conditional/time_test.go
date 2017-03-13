@@ -190,3 +190,168 @@ func TestDayTimeRangeString(t *testing.T) {
 		t.Errorf("expected: %s, got: %s", expected, value)
 	}
 }
+
+func TestWeekdaysContains(t *testing.T) {
+	weekdays := Weekdays{time.Monday, time.Saturday}
+	values := []struct {
+		Weekday  time.Weekday
+		Expected bool
+	}{
+		{
+			Weekday:  time.Monday,
+			Expected: true,
+		},
+		{
+			Weekday:  time.Tuesday,
+			Expected: false,
+		},
+		{
+			Weekday:  time.Wednesday,
+			Expected: false,
+		},
+		{
+			Weekday:  time.Thursday,
+			Expected: false,
+		},
+		{
+			Weekday:  time.Friday,
+			Expected: false,
+		},
+		{
+			Weekday:  time.Saturday,
+			Expected: true,
+		},
+		{
+			Weekday:  time.Sunday,
+			Expected: false,
+		},
+	}
+
+	for _, value := range values {
+		if value.Expected != weekdays.Contains(value.Weekday) {
+			if value.Expected {
+				t.Errorf("expected %s to be in %s", value.Weekday, weekdays)
+			} else {
+				t.Errorf("expected %s to not be in %s", value.Weekday, weekdays)
+			}
+		}
+	}
+}
+
+func TestWeekdaysRangeContains(t *testing.T) {
+	weekdaysRange := WeekdaysRange{
+		Weekdays: Weekdays{time.Monday, time.Saturday},
+	}
+
+	makeWeekday := func(wd time.Weekday) time.Time {
+		return time.Date(2017, 3, 12+int(wd), 12, 0, 0, 0, time.Local)
+	}
+
+	values := []struct {
+		Time     time.Time
+		Expected bool
+	}{
+		{
+			Time:     makeWeekday(time.Monday),
+			Expected: true,
+		},
+		{
+			Time:     makeWeekday(time.Tuesday),
+			Expected: false,
+		},
+		{
+			Time:     makeWeekday(time.Wednesday),
+			Expected: false,
+		},
+		{
+			Time:     makeWeekday(time.Thursday),
+			Expected: false,
+		},
+		{
+			Time:     makeWeekday(time.Friday),
+			Expected: false,
+		},
+		{
+			Time:     makeWeekday(time.Saturday),
+			Expected: true,
+		},
+		{
+			Time:     makeWeekday(time.Sunday),
+			Expected: false,
+		},
+	}
+
+	for _, value := range values {
+		if value.Expected != weekdaysRange.Contains(value.Time) {
+			if value.Expected {
+				t.Errorf("expected %s to be in %s", value.Time, weekdaysRange)
+			} else {
+				t.Errorf("expected %s to not be in %s", value.Time, weekdaysRange)
+			}
+		}
+	}
+}
+
+func TestWeekdaysRangeNextStart(t *testing.T) {
+	weekdaysRange := WeekdaysRange{
+		Weekdays: Weekdays{time.Monday, time.Tuesday, time.Saturday},
+	}
+
+	makeWeekday := func(wd time.Weekday) time.Time {
+		return time.Date(2017, 3, 12+int(wd), 0, 0, 0, 0, time.Local)
+	}
+
+	weekday := makeWeekday(time.Sunday)
+	value := weekdaysRange.NextStart(weekday)
+	expected := makeWeekday(time.Monday)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
+	weekday = makeWeekday(time.Monday)
+	value = weekdaysRange.NextStart(weekday)
+	expected = makeWeekday(time.Saturday)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+}
+
+func TestWeekdaysRangeNextStop(t *testing.T) {
+	weekdaysRange := WeekdaysRange{
+		Weekdays: Weekdays{time.Monday, time.Tuesday, time.Saturday},
+	}
+
+	makeWeekday := func(wd time.Weekday) time.Time {
+		return time.Date(2017, 3, 12+int(wd), 0, 0, 0, 0, time.Local)
+	}
+
+	weekday := makeWeekday(time.Sunday)
+	value := weekdaysRange.NextStop(weekday)
+	expected := makeWeekday(time.Wednesday)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
+	weekday = makeWeekday(time.Monday)
+	value = weekdaysRange.NextStop(weekday)
+	expected = makeWeekday(time.Wednesday)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+}
+
+func TestWeekdaysRangeString(t *testing.T) {
+	weekdaysRange := WeekdaysRange{
+		Weekdays: Weekdays{time.Monday, time.Tuesday, time.Saturday},
+	}
+	expected := "Monday, Tuesday, Saturday"
+	value := weekdaysRange.String()
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+}
