@@ -48,7 +48,7 @@ func TestDayTimeHour(t *testing.T) {
 	value := dayTime.Hour()
 
 	if value != expected {
-		t.Errorf("expected: %s, got: %s", expected, value)
+		t.Errorf("expected: %d, got: %d", expected, value)
 	}
 }
 
@@ -58,7 +58,7 @@ func TestDayTimeMinute(t *testing.T) {
 	value := dayTime.Minute()
 
 	if value != expected {
-		t.Errorf("expected: %s, got: %s", expected, value)
+		t.Errorf("expected: %d, got: %d", expected, value)
 	}
 }
 
@@ -68,7 +68,7 @@ func TestDayTimeSecond(t *testing.T) {
 	value := dayTime.Second()
 
 	if value != expected {
-		t.Errorf("expected: %s, got: %s", expected, value)
+		t.Errorf("expected: %d, got: %d", expected, value)
 	}
 }
 

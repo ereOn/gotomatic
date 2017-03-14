@@ -83,6 +83,12 @@ func (o SleepFunctionOption) apply(condition *TimeCondition) {
 	condition.sleepFunc = o.SleepFunction
 }
 
+// Close terminates the condition.
+//
+// Any pending wait on one of the returned channels via Wait() or
+// WaitChange() will be unblocked.
+//
+// Calling Close() twice or more has no effect.
 func (condition *TimeCondition) Close() error {
 	if condition.done != nil {
 		close(condition.done)
@@ -126,13 +132,13 @@ func (d DayTime) Hour() int {
 	return int(time.Duration(d) / time.Hour)
 }
 
-// Hour returns the hour of the DayTime.
+// Minute returns the minute of the DayTime.
 func (d DayTime) Minute() int {
 	hours := time.Duration(d.Hour()) * time.Hour
 	return int((time.Duration(d) - hours) / time.Minute)
 }
 
-// Hour returns the hour of the DayTime.
+// Second returns the second of the DayTime.
 func (d DayTime) Second() int {
 	hours := time.Duration(d.Hour()) * time.Hour
 	minutes := time.Duration(d.Minute()) * time.Minute
@@ -162,9 +168,9 @@ func (r DayTimeRange) Contains(t time.Time) bool {
 
 	if r.Start < r.Stop {
 		return r.Start <= dayTime && dayTime < r.Stop
-	} else {
-		return dayTime < r.Stop || dayTime >= r.Start
 	}
+
+	return dayTime < r.Stop || dayTime >= r.Start
 }
 
 func next(t time.Time, ref DayTime) time.Time {
@@ -179,19 +185,19 @@ func next(t time.Time, ref DayTime) time.Time {
 	return time.Date(year, month, day+1, ref.Hour(), ref.Minute(), ref.Second(), 0, t.Location())
 }
 
-// Next returns the next time that will start the range.
+// NextStart returns the next time that will start the range.
 func (r DayTimeRange) NextStart(t time.Time) time.Time {
 	return next(t, r.Start)
 }
 
-// Next returns the next time that will stop the range.
+// NextStop returns the next time that will stop the range.
 func (r DayTimeRange) NextStop(t time.Time) time.Time {
 	return next(t, r.Stop)
 }
 
 // String returns the string representation of the DayTimeRange.
-func (d DayTimeRange) String() string {
-	return fmt.Sprintf("between %s and %s", d.Start, d.Stop)
+func (r DayTimeRange) String() string {
+	return fmt.Sprintf("between %s and %s", r.Start, r.Stop)
 }
 
 // WeekdaysRange represents a range of days within a week.
@@ -219,13 +225,13 @@ func (r WeekdaysRange) Contains(t time.Time) bool {
 	return r.Weekdays.Contains(t.Weekday())
 }
 
-// Next returns the next time that will start the range.
+// NextStart returns the next time that will start the range.
 func (r WeekdaysRange) NextStart(t time.Time) time.Time {
 	year, month, day := t.Date()
 	currentWeekday := t.Weekday()
 
 	// The default is to return next week.
-	var result time.Time = time.Date(year, month, day+7, 0, 0, 0, 0, t.Location())
+	result := time.Date(year, month, day+7, 0, 0, 0, 0, t.Location())
 
 	if len(r.Weekdays) < 7 {
 		if r.Contains(t) {
@@ -245,13 +251,13 @@ func (r WeekdaysRange) NextStart(t time.Time) time.Time {
 	return result
 }
 
-// Next returns the next time that will stop the range.
+// NextStop returns the next time that will stop the range.
 func (r WeekdaysRange) NextStop(t time.Time) time.Time {
 	year, month, day := t.Date()
 	currentWeekday := t.Weekday()
 
 	// The default is to return next week.
-	var result time.Time = time.Date(year, month, day+7, 0, 0, 0, 0, t.Location())
+	result := time.Date(year, month, day+7, 0, 0, 0, 0, t.Location())
 
 	if len(r.Weekdays) < 7 {
 		if !r.Contains(t) {
@@ -272,10 +278,10 @@ func (r WeekdaysRange) NextStop(t time.Time) time.Time {
 }
 
 // String returns the string representation of the WeekdaysRange.
-func (d WeekdaysRange) String() string {
-	s := make([]string, len(d.Weekdays), len(d.Weekdays))
+func (r WeekdaysRange) String() string {
+	s := make([]string, len(r.Weekdays), len(r.Weekdays))
 
-	for i, wd := range d.Weekdays {
+	for i, wd := range r.Weekdays {
 		s[i] = wd.String()
 	}
 
