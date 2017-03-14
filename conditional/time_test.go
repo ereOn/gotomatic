@@ -145,6 +145,18 @@ func TestDayTimeRangeNextStart(t *testing.T) {
 	if value != tomorrow {
 		t.Errorf("expected: %s, got: %s", tomorrow, value)
 	}
+
+	dayTimeRange = DayTimeRange{
+		Start: NewDayTime(12, 0, 0),
+		Stop:  NewDayTime(12, 0, 0),
+	}
+
+	today = time.Date(2017, 3, 13, 12, 0, 0, 0, edt)
+	value = dayTimeRange.NextStart(a)
+
+	if value != today {
+		t.Errorf("expected: %s, got: %s", today, value)
+	}
 }
 
 func TestDayTimeRangeNextStop(t *testing.T) {
@@ -174,6 +186,18 @@ func TestDayTimeRangeNextStop(t *testing.T) {
 
 	if value != tomorrow {
 		t.Errorf("expected: %s, got: %s", tomorrow, value)
+	}
+
+	dayTimeRange = DayTimeRange{
+		Start: NewDayTime(12, 0, 0),
+		Stop:  NewDayTime(12, 0, 0),
+	}
+
+	today = time.Date(2017, 3, 13, 12, 0, 0, 0, edt)
+	value = dayTimeRange.NextStop(a)
+
+	if value != today {
+		t.Errorf("expected: %s, got: %s", today, value)
 	}
 }
 
@@ -312,6 +336,40 @@ func TestWeekdaysRangeNextStart(t *testing.T) {
 	weekday = makeWeekday(time.Monday)
 	value = weekdaysRange.NextStart(weekday)
 	expected = makeWeekday(time.Saturday)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
+	// Try with an empty range.
+	weekdaysRange = WeekdaysRange{
+		Weekdays: Weekdays{},
+	}
+
+	weekday = makeWeekday(time.Monday)
+	value = weekdaysRange.NextStart(weekday)
+	expected = makeWeekday(time.Monday + time.Weekday(7))
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
+	// Try with a full range.
+	weekdaysRange = WeekdaysRange{
+		Weekdays: Weekdays{
+			time.Monday,
+			time.Tuesday,
+			time.Wednesday,
+			time.Thursday,
+			time.Friday,
+			time.Saturday,
+			time.Sunday,
+		},
+	}
+
+	weekday = makeWeekday(time.Monday)
+	value = weekdaysRange.NextStart(weekday)
+	expected = makeWeekday(time.Monday + time.Weekday(7))
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)

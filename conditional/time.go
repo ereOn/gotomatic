@@ -224,16 +224,21 @@ func (r WeekdaysRange) NextStart(t time.Time) time.Time {
 	year, month, day := t.Date()
 	currentWeekday := t.Weekday()
 
-	if r.Contains(t) {
-		return r.NextStart(r.NextStop(t))
-	}
+	// The default is to return next week.
+	var result time.Time = time.Date(year, month, day+7, 0, 0, 0, 0, t.Location())
 
-	var result time.Time
+	if len(r.Weekdays) < 7 {
+		if r.Contains(t) {
+			return r.NextStart(r.NextStop(t))
+		}
 
-	for weekday := currentWeekday + 1; weekday <= currentWeekday+7; weekday = weekday + 1 {
-		if r.Weekdays.Contains(weekday) {
-			result = time.Date(year, month, day+int(weekday-currentWeekday), 0, 0, 0, 0, t.Location())
-			break
+		for i := 1; i <= 7; i = i + 1 {
+			weekday := currentWeekday + time.Weekday(i%7)
+
+			if r.Weekdays.Contains(weekday) {
+				result = time.Date(year, month, day+i, 0, 0, 0, 0, t.Location())
+				break
+			}
 		}
 	}
 
@@ -245,15 +250,21 @@ func (r WeekdaysRange) NextStop(t time.Time) time.Time {
 	year, month, day := t.Date()
 	currentWeekday := t.Weekday()
 
-	if !r.Contains(t) {
-		return r.NextStop(r.NextStart(t))
-	}
-	var result time.Time
+	// The default is to return next week.
+	var result time.Time = time.Date(year, month, day+7, 0, 0, 0, 0, t.Location())
 
-	for weekday := currentWeekday + 1; weekday <= currentWeekday+7; weekday = weekday + 1 {
-		if !r.Weekdays.Contains(weekday) {
-			result = time.Date(year, month, day+int(weekday-currentWeekday), 0, 0, 0, 0, t.Location())
-			break
+	if len(r.Weekdays) < 7 {
+		if !r.Contains(t) {
+			return r.NextStop(r.NextStart(t))
+		}
+
+		for i := 1; i <= 7; i = i + 1 {
+			weekday := currentWeekday + time.Weekday(i%7)
+
+			if !r.Weekdays.Contains(weekday) {
+				result = time.Date(year, month, day+int(weekday-currentWeekday), 0, 0, 0, 0, t.Location())
+				break
+			}
 		}
 	}
 
