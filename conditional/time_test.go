@@ -413,3 +413,99 @@ func TestWeekdaysRangeString(t *testing.T) {
 		t.Errorf("expected: %s, got: %s", expected, value)
 	}
 }
+
+func TestCompositeTimeRangeNoSubranges(t *testing.T) {
+	defer func() {
+		if err := recover(); err == nil {
+			t.Fatalf("instantiation was supposed to panic")
+		}
+	}()
+
+	NewCompositeTimeRange(OperatorAnd)
+}
+
+func TestCompositeTimeRangeContains(t *testing.T) {
+	dayTimeRange := DayTimeRange{
+		Start: NewDayTime(10, 0, 0),
+		Stop:  NewDayTime(12, 0, 0),
+	}
+	weekdaysRange := WeekdaysRange{
+		Weekdays: Weekdays{time.Monday, time.Saturday},
+	}
+	r := NewCompositeTimeRange(OperatorAnd, dayTimeRange, weekdaysRange)
+
+	edt, err := time.LoadLocation("Canada/Eastern")
+
+	if err != nil {
+		panic(err)
+	}
+
+	a := time.Date(2017, 3, 13, 11, 0, 0, 0, edt) // Monday
+	b := time.Date(2017, 3, 14, 11, 0, 0, 0, edt) // Tuesday
+
+	if !r.Contains(a) {
+		t.Errorf("%s does not contain %s", r, a)
+	}
+
+	if r.Contains(b) {
+		t.Errorf("%s contains %s", r, b)
+	}
+}
+
+func TestCompositeTimeRangeNextStart(t *testing.T) {
+	// NextStop is implemented in terms of NextStart, so we just have to it
+	// once.
+	TestCompositeTimeRangeNextStop(t)
+}
+
+func TestCompositeTimeRangeNextStop(t *testing.T) {
+	dayTimeRange := DayTimeRange{
+		Start: NewDayTime(10, 0, 0),
+		Stop:  NewDayTime(12, 0, 0),
+	}
+	weekdaysRange := WeekdaysRange{
+		Weekdays: Weekdays{time.Monday, time.Saturday},
+	}
+	r := NewCompositeTimeRange(OperatorAnd, dayTimeRange, weekdaysRange)
+
+	edt, err := time.LoadLocation("Canada/Eastern")
+
+	if err != nil {
+		panic(err)
+	}
+
+	a := time.Date(2017, 3, 13, 11, 0, 0, 0, edt) // Monday
+
+	expected := time.Date(2017, 3, 13, 12, 0, 0, 0, edt)
+	value := r.NextStop(a)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
+	a = time.Date(2017, 3, 17, 13, 0, 0, 0, edt) // Tuesday
+	expected = time.Date(2017, 3, 18, 0, 0, 0, 0, edt)
+	value = r.NextStop(a)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+}
+
+func TestCompositeTimeRangeString(t *testing.T) {
+	dayTimeRange := DayTimeRange{
+		Start: NewDayTime(10, 0, 0),
+		Stop:  NewDayTime(12, 0, 0),
+	}
+	weekdaysRange := WeekdaysRange{
+		Weekdays: Weekdays{time.Monday},
+	}
+	r := NewCompositeTimeRange(OperatorAnd, dayTimeRange, weekdaysRange)
+
+	expected := "(between 10:00:00 and 12:00:00) and (Monday)"
+	value := r.String()
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+}

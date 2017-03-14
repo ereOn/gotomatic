@@ -89,3 +89,30 @@ func TestCompositeConditionOperatorXor(t *testing.T) {
 
 	assertConditionChanged(t, condition, false, "a set to true again", func() { a.Set(true) })
 }
+
+func TestOperatorAndString(t *testing.T) {
+	value := OperatorAnd.String()
+	expected := "and"
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+}
+
+func TestOperatorOrString(t *testing.T) {
+	value := OperatorOr.String()
+	expected := "or"
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+}
+
+func TestOperatorXorString(t *testing.T) {
+	value := OperatorXor.String()
+	expected := "xor"
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+}

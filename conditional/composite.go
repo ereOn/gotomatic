@@ -10,9 +10,11 @@ type CompositeCondition struct {
 	stop          chan struct{}
 }
 
-// CompositeOperator represents an operator to use in CompositeConditions.
+// CompositeOperator represents an operator to use in CompositeCondition or
+// CompositeTimeRange.
 type CompositeOperator interface {
 	Reduce(values []bool) bool
+	String() string
 }
 
 var (
@@ -114,6 +116,10 @@ func (o operatorAnd) Reduce(values []bool) bool {
 	return true
 }
 
+func (o operatorAnd) String() string {
+	return "and"
+}
+
 type operatorOr struct{}
 
 func (o operatorOr) Reduce(values []bool) bool {
@@ -124,6 +130,10 @@ func (o operatorOr) Reduce(values []bool) bool {
 	}
 
 	return false
+}
+
+func (o operatorOr) String() string {
+	return "or"
 }
 
 type operatorXor struct{}
@@ -142,4 +152,8 @@ func (o operatorXor) Reduce(values []bool) bool {
 	}
 
 	return result
+}
+
+func (o operatorXor) String() string {
+	return "xor"
 }

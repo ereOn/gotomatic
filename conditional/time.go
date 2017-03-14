@@ -17,6 +17,9 @@ type TimeRange interface {
 
 	// Next returns the next time that will stop the range.
 	NextStop(time time.Time) time.Time
+
+	// String returns the string representation of the time range.
+	String() string
 }
 
 // TimeCondition represents a condition that is met as long as the current time
@@ -286,4 +289,73 @@ func (r WeekdaysRange) String() string {
 	}
 
 	return strings.Join(s, ", ")
+}
+
+type compositeRange struct {
+	ranges   []TimeRange
+	operator CompositeOperator
+}
+
+// NewCompositeTimeRange creates a new TimeRange which is the composition of
+// several other TimeRanges.
+func NewCompositeTimeRange(operator CompositeOperator, ranges ...TimeRange) TimeRange {
+	if len(ranges) == 0 {
+		panic("cannot instantiate a composite range without at least one sub-range")
+	}
+
+	return &compositeRange{
+		ranges:   ranges,
+		operator: operator,
+	}
+}
+
+// Contains returns true if the specified time is contained in the range,
+// false otherwise.
+func (r compositeRange) Contains(t time.Time) bool {
+	values := make([]bool, len(r.ranges), len(r.ranges))
+
+	for i, r := range r.ranges {
+		values[i] = r.Contains(t)
+	}
+
+	return r.operator.Reduce(values)
+}
+
+// Next returns the next time that will start the range.
+func (r compositeRange) NextStart(t time.Time) time.Time {
+	var result time.Time
+
+	for _, r := range r.ranges {
+		// Because we don't know what the operator is going to be, we stop at
+		// the first possible change. This way we may wake up too soon, but
+		// never too late.
+		x := r.NextStart(t)
+		y := r.NextStop(t)
+
+		if x.Before(result) || (result == time.Time{}) {
+			result = x
+		}
+
+		if y.Before(result) {
+			result = y
+		}
+	}
+
+	return result
+}
+
+// Next returns the next time that will stop the range.
+func (r compositeRange) NextStop(t time.Time) time.Time {
+	return r.NextStart(t)
+}
+
+// String returns the string representation of the composite range.
+func (r compositeRange) String() string {
+	s := make([]string, len(r.ranges), len(r.ranges))
+
+	for i, r := range r.ranges {
+		s[i] = fmt.Sprintf("(%s)", r)
+	}
+
+	return strings.Join(s, fmt.Sprintf(" %s ", r.operator))
 }
