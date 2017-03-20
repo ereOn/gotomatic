@@ -28,18 +28,19 @@ type TimeCondition struct {
 	Condition
 	TimeRange TimeRange
 	timeFunc  func() time.Time
-	sleepFunc func(time.Duration, <-chan struct{})
+	sleepFunc func(time.Duration, <-chan struct{}) bool
 	done      chan struct{}
 }
 
-func sleep(duration time.Duration, interrupt <-chan struct{}) {
+func sleep(duration time.Duration, interrupt <-chan struct{}) bool {
 	timer := time.NewTimer(duration)
 
 	select {
 	case <-timer.C:
+		return true
 	case <-interrupt:
 		timer.Stop()
-		break
+		return false
 	}
 }
 
@@ -79,7 +80,7 @@ func (o TimeFunctionOption) apply(condition *TimeCondition) {
 
 // SleepFunctionOption defines the sleep function used by a TimeCondition.
 type SleepFunctionOption struct {
-	SleepFunction func(time.Duration, <-chan struct{})
+	SleepFunction func(time.Duration, <-chan struct{}) bool
 }
 
 func (o SleepFunctionOption) apply(condition *TimeCondition) {
@@ -101,8 +102,10 @@ func (condition *TimeCondition) Close() error {
 	return condition.Condition.Close()
 }
 
-func (condition *TimeCondition) checkTime() error {
-	for {
+func (condition *TimeCondition) checkTime() {
+	var delay time.Duration
+
+	for condition.sleepFunc(delay, condition.done) {
 		now := condition.timeFunc()
 		var next time.Time
 
@@ -114,7 +117,7 @@ func (condition *TimeCondition) checkTime() error {
 			condition.Condition.(*ManualCondition).Set(false)
 		}
 
-		condition.sleepFunc(next.Sub(now), condition.done)
+		delay = next.Sub(now)
 	}
 }
 

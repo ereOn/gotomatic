@@ -26,7 +26,7 @@ func TestTimeCondition(t *testing.T) {
 			TimeFunction: func() time.Time { return now },
 		},
 		SleepFunctionOption{
-			SleepFunction: func(time.Duration, <-chan struct{}) {},
+			SleepFunction: func(time.Duration, <-chan struct{}) bool { return true },
 		},
 	)
 	defer condition.Close()
