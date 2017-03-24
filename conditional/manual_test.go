@@ -1,6 +1,8 @@
 package conditional
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestManualCondition(t *testing.T) {
 	condition := NewManualCondition(false)

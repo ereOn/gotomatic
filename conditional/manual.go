@@ -1,6 +1,8 @@
 package conditional
 
-import "sync"
+import (
+	"sync"
+)
 
 // ManualCondition is a condition that can be set or unset explicitely.
 type ManualCondition struct {
