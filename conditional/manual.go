@@ -4,6 +4,7 @@ import "sync"
 
 // ManualCondition is a condition that can be set or unset explicitely.
 type ManualCondition struct {
+	name      string
 	lock      sync.Mutex
 	satisfied bool
 	channels  []chan struct{}
@@ -64,6 +65,16 @@ func (c *ManualCondition) Close() error {
 	c.unprotectedClose()
 
 	return nil
+}
+
+// Name returns the name associated with the condition, if there is one.
+func (c *ManualCondition) Name() string {
+	return c.name
+}
+
+// SetName sets the name associated with the condition.
+func (c *ManualCondition) SetName(name string) {
+	c.name = name
 }
 
 // Set defines the ManualCondition satisfied state explicitely.

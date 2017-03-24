@@ -24,3 +24,18 @@ func TestManualCondition(t *testing.T) {
 	assertConditionState(t, condition, true, "fourth set to true")
 	assertConditionChanged(t, condition, true, "fifth set to false", func() { condition.Set(false) })
 }
+
+func TestManualConditionName(t *testing.T) {
+	condition := NewManualCondition(false)
+	defer condition.Close()
+
+	if condition.Name() != "" {
+		t.Errorf("condition name should be empty but was `%s`", condition.Name())
+	}
+
+	condition.SetName("foo")
+
+	if condition.Name() != "foo" {
+		t.Errorf("condition name should be `%s` but was `%s`", "foo", condition.Name())
+	}
+}
