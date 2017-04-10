@@ -362,3 +362,134 @@ func (r compositeRange) String() string {
 
 	return strings.Join(s, fmt.Sprintf(" %s ", r.operator))
 }
+
+// Frequency represents a frequency.
+type Frequency interface {
+	nextOccurence(start time.Time, t time.Time) time.Time
+}
+
+var (
+	FrequencyYear   = frequencyYear{}
+	FrequencyMonth  = frequencyMonth{}
+	FrequencyWeek   = frequencyWeek{}
+	FrequencyDay    = frequencyDay{}
+	FrequencyHour   = frequencyHour{}
+	FrequencyMinute = frequencyMinute{}
+	FrequencySecond = frequencySecond{}
+)
+
+type frequencyYear struct{}
+
+func (frequencyYear) nextOccurence(start time.Time, t time.Time) time.Time {
+	t = t.In(start.Location())
+
+	_, month, day := start.Date()
+	hour, minute, second := start.Clock()
+	r := time.Date(t.Year(), month, day, hour, minute, second, start.Nanosecond(), start.Location())
+
+	if !r.After(t) {
+		r = r.AddDate(1, 0, 0)
+	}
+
+	return r
+}
+
+type frequencyMonth struct{}
+
+func (frequencyMonth) nextOccurence(start time.Time, t time.Time) time.Time {
+	t = t.In(start.Location())
+
+	_, _, day := start.Date()
+	hour, minute, second := start.Clock()
+
+	r := time.Date(t.Year(), t.Month(), day, hour, minute, second, start.Nanosecond(), start.Location())
+
+	if !r.After(t) {
+		r = r.AddDate(0, 1, 0)
+	}
+
+	return r
+}
+
+type frequencyWeek struct{}
+
+func (frequencyWeek) nextOccurence(start time.Time, t time.Time) time.Time {
+	t = t.In(start.Location())
+
+	weekday := start.Weekday()
+	hour, minute, second := start.Clock()
+
+	r := time.Date(t.Year(), t.Month(), t.Day()+int(weekday)-int(t.Weekday()), hour, minute, second, start.Nanosecond(), start.Location())
+
+	if !r.After(t) {
+		r = r.AddDate(0, 0, 7)
+	}
+
+	return r
+}
+
+type frequencyDay struct{}
+
+func (frequencyDay) nextOccurence(start time.Time, t time.Time) time.Time {
+	t = t.In(start.Location())
+
+	hour, minute, second := start.Clock()
+
+	r := time.Date(t.Year(), t.Month(), t.Day(), hour, minute, second, start.Nanosecond(), start.Location())
+
+	if !r.After(t) {
+		r = r.AddDate(0, 0, 1)
+	}
+
+	return r
+}
+
+type frequencyHour struct{}
+
+func (frequencyHour) nextOccurence(start time.Time, t time.Time) time.Time {
+	t = t.In(start.Location())
+
+	_, minute, second := start.Clock()
+
+	r := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), minute, second, start.Nanosecond(), start.Location())
+
+	if !r.After(t) {
+		r = r.Add(time.Hour)
+	}
+
+	return r
+}
+
+type frequencyMinute struct{}
+
+func (frequencyMinute) nextOccurence(start time.Time, t time.Time) time.Time {
+	t = t.In(start.Location())
+
+	_, _, second := start.Clock()
+
+	r := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), second, start.Nanosecond(), start.Location())
+
+	if !r.After(t) {
+		r = r.Add(time.Minute)
+	}
+
+	return r
+}
+
+type frequencySecond struct{}
+
+func (frequencySecond) nextOccurence(start time.Time, t time.Time) time.Time {
+	t = t.In(start.Location())
+
+	r := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), start.Nanosecond(), start.Location())
+
+	if !r.After(t) {
+		r = r.Add(time.Second)
+	}
+
+	return r
+}
+
+// Moment represents a moment in time.
+type Moment struct {
+}
