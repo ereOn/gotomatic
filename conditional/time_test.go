@@ -519,16 +519,30 @@ func TestFrequencyYear(t *testing.T) {
 
 	start := time.Date(2016, 2, 29, 11, 15, 30, 50, edt)
 	now := time.Date(2020, 4, 10, 15, 45, 10, 20, edt)
-	expected := time.Date(2021, 3, 1, 11, 15, 30, 50, edt)
-	value := FrequencyYear.nextOccurence(start, now)
+	expected := time.Date(2020, 2, 29, 11, 15, 30, 50, edt)
+	value := FrequencyYear.getStart(start, now)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
+	expected = time.Date(2021, 3, 1, 11, 15, 30, 50, edt)
+	value = FrequencyYear.getNextStart(start, now)
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)
 	}
 
 	now = time.Date(2020, 1, 39, 15, 45, 10, 20, edt)
+	expected = time.Date(2019, 2, 29, 11, 15, 30, 50, edt)
+	value = FrequencyYear.getStart(start, now)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
 	expected = time.Date(2020, 2, 29, 11, 15, 30, 50, edt)
-	value = FrequencyYear.nextOccurence(start, now)
+	value = FrequencyYear.getNextStart(start, now)
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)
@@ -544,16 +558,30 @@ func TestFrequencyMonth(t *testing.T) {
 
 	start := time.Date(2016, 2, 29, 11, 15, 30, 50, edt)
 	now := time.Date(2020, 4, 10, 15, 45, 10, 20, edt)
-	expected := time.Date(2020, 4, 29, 11, 15, 30, 50, edt)
-	value := FrequencyMonth.nextOccurence(start, now)
+	expected := time.Date(2020, 3, 29, 11, 15, 30, 50, edt)
+	value := FrequencyMonth.getStart(start, now)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
+	expected = time.Date(2020, 4, 29, 11, 15, 30, 50, edt)
+	value = FrequencyMonth.getNextStart(start, now)
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)
 	}
 
 	now = time.Date(2020, 4, 30, 15, 45, 10, 20, edt)
+	expected = time.Date(2020, 4, 29, 11, 15, 30, 50, edt)
+	value = FrequencyMonth.getStart(start, now)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
 	expected = time.Date(2020, 5, 29, 11, 15, 30, 50, edt)
-	value = FrequencyMonth.nextOccurence(start, now)
+	value = FrequencyMonth.getNextStart(start, now)
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)
@@ -569,16 +597,30 @@ func TestFrequencyWeek(t *testing.T) {
 
 	start := time.Date(2017, 4, 25, 11, 15, 30, 50, edt) // Tuesday.
 	now := time.Date(2017, 4, 10, 15, 45, 10, 20, edt)
-	expected := time.Date(2017, 4, 11, 11, 15, 30, 50, edt)
-	value := FrequencyWeek.nextOccurence(start, now)
+	expected := time.Date(2017, 4, 4, 11, 15, 30, 50, edt)
+	value := FrequencyWeek.getStart(start, now)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
+	expected = time.Date(2017, 4, 11, 11, 15, 30, 50, edt)
+	value = FrequencyWeek.getNextStart(start, now)
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)
 	}
 
 	now = time.Date(2017, 4, 11, 15, 45, 10, 20, edt)
+	expected = time.Date(2017, 4, 11, 11, 15, 30, 50, edt)
+	value = FrequencyWeek.getStart(start, now)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
 	expected = time.Date(2017, 4, 18, 11, 15, 30, 50, edt)
-	value = FrequencyWeek.nextOccurence(start, now)
+	value = FrequencyWeek.getNextStart(start, now)
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)
@@ -594,16 +636,30 @@ func TestFrequencyDay(t *testing.T) {
 
 	start := time.Date(2017, 4, 25, 11, 15, 30, 50, edt) // Tuesday.
 	now := time.Date(2017, 4, 10, 15, 45, 10, 20, edt)
-	expected := time.Date(2017, 4, 11, 11, 15, 30, 50, edt)
-	value := FrequencyDay.nextOccurence(start, now)
+	expected := time.Date(2017, 4, 10, 11, 15, 30, 50, edt)
+	value := FrequencyDay.getStart(start, now)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
+	expected = time.Date(2017, 4, 11, 11, 15, 30, 50, edt)
+	value = FrequencyDay.getNextStart(start, now)
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)
 	}
 
 	now = time.Date(2017, 4, 10, 10, 45, 10, 20, edt)
+	expected = time.Date(2017, 4, 9, 11, 15, 30, 50, edt)
+	value = FrequencyDay.getStart(start, now)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
 	expected = time.Date(2017, 4, 10, 11, 15, 30, 50, edt)
-	value = FrequencyDay.nextOccurence(start, now)
+	value = FrequencyDay.getNextStart(start, now)
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)
@@ -619,16 +675,30 @@ func TestFrequencyHour(t *testing.T) {
 
 	start := time.Date(2017, 4, 25, 11, 15, 30, 50, edt) // Tuesday.
 	now := time.Date(2017, 4, 10, 15, 45, 10, 20, edt)
-	expected := time.Date(2017, 4, 10, 16, 15, 30, 50, edt)
-	value := FrequencyHour.nextOccurence(start, now)
+	expected := time.Date(2017, 4, 10, 15, 15, 30, 50, edt)
+	value := FrequencyHour.getStart(start, now)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
+	expected = time.Date(2017, 4, 10, 16, 15, 30, 50, edt)
+	value = FrequencyHour.getNextStart(start, now)
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)
 	}
 
 	now = time.Date(2017, 4, 10, 10, 05, 10, 20, edt)
+	expected = time.Date(2017, 4, 10, 9, 15, 30, 50, edt)
+	value = FrequencyHour.getStart(start, now)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
 	expected = time.Date(2017, 4, 10, 10, 15, 30, 50, edt)
-	value = FrequencyHour.nextOccurence(start, now)
+	value = FrequencyHour.getNextStart(start, now)
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)
@@ -644,16 +714,30 @@ func TestFrequencyMinute(t *testing.T) {
 
 	start := time.Date(2017, 4, 25, 11, 15, 30, 50, edt) // Tuesday.
 	now := time.Date(2017, 4, 10, 15, 45, 10, 20, edt)
-	expected := time.Date(2017, 4, 10, 15, 45, 30, 50, edt)
-	value := FrequencyMinute.nextOccurence(start, now)
+	expected := time.Date(2017, 4, 10, 15, 44, 30, 50, edt)
+	value := FrequencyMinute.getStart(start, now)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
+	expected = time.Date(2017, 4, 10, 15, 45, 30, 50, edt)
+	value = FrequencyMinute.getNextStart(start, now)
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)
 	}
 
 	now = time.Date(2017, 4, 10, 10, 5, 35, 20, edt)
+	expected = time.Date(2017, 4, 10, 10, 5, 30, 50, edt)
+	value = FrequencyMinute.getStart(start, now)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
 	expected = time.Date(2017, 4, 10, 10, 6, 30, 50, edt)
-	value = FrequencyMinute.nextOccurence(start, now)
+	value = FrequencyMinute.getNextStart(start, now)
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)
@@ -669,16 +753,30 @@ func TestFrequencySecond(t *testing.T) {
 
 	start := time.Date(2017, 4, 25, 11, 15, 30, 50, edt) // Tuesday.
 	now := time.Date(2017, 4, 10, 15, 45, 10, 20, edt)
-	expected := time.Date(2017, 4, 10, 15, 45, 10, 50, edt)
-	value := FrequencySecond.nextOccurence(start, now)
+	expected := time.Date(2017, 4, 10, 15, 45, 9, 50, edt)
+	value := FrequencySecond.getStart(start, now)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
+	expected = time.Date(2017, 4, 10, 15, 45, 10, 50, edt)
+	value = FrequencySecond.getNextStart(start, now)
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)
 	}
 
 	now = time.Date(2017, 4, 10, 15, 45, 10, 51, edt)
+	expected = time.Date(2017, 4, 10, 15, 45, 10, 50, edt)
+	value = FrequencySecond.getStart(start, now)
+
+	if value != expected {
+		t.Errorf("expected: %s, got: %s", expected, value)
+	}
+
 	expected = time.Date(2017, 4, 10, 15, 45, 11, 50, edt)
-	value = FrequencySecond.nextOccurence(start, now)
+	value = FrequencySecond.getNextStart(start, now)
 
 	if value != expected {
 		t.Errorf("expected: %s, got: %s", expected, value)

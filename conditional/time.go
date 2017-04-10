@@ -365,7 +365,9 @@ func (r compositeRange) String() string {
 
 // Frequency represents a frequency.
 type Frequency interface {
-	nextOccurence(start time.Time, t time.Time) time.Time
+	getBase(start time.Time, t time.Time) time.Time
+	getStart(start time.Time, t time.Time) time.Time
+	getNextStart(start time.Time, t time.Time) time.Time
 }
 
 var (
@@ -380,12 +382,26 @@ var (
 
 type frequencyYear struct{}
 
-func (frequencyYear) nextOccurence(start time.Time, t time.Time) time.Time {
+func (frequencyYear) getBase(start time.Time, t time.Time) time.Time {
 	t = t.In(start.Location())
 
 	_, month, day := start.Date()
 	hour, minute, second := start.Clock()
-	r := time.Date(t.Year(), month, day, hour, minute, second, start.Nanosecond(), start.Location())
+	return time.Date(t.Year(), month, day, hour, minute, second, start.Nanosecond(), start.Location())
+}
+
+func (f frequencyYear) getStart(start time.Time, t time.Time) time.Time {
+	r := f.getBase(start, t)
+
+	if !r.Before(t) {
+		r = r.AddDate(-1, 0, 0)
+	}
+
+	return r
+}
+
+func (f frequencyYear) getNextStart(start time.Time, t time.Time) time.Time {
+	r := f.getBase(start, t)
 
 	if !r.After(t) {
 		r = r.AddDate(1, 0, 0)
@@ -396,13 +412,27 @@ func (frequencyYear) nextOccurence(start time.Time, t time.Time) time.Time {
 
 type frequencyMonth struct{}
 
-func (frequencyMonth) nextOccurence(start time.Time, t time.Time) time.Time {
+func (frequencyMonth) getBase(start time.Time, t time.Time) time.Time {
 	t = t.In(start.Location())
 
 	_, _, day := start.Date()
 	hour, minute, second := start.Clock()
 
-	r := time.Date(t.Year(), t.Month(), day, hour, minute, second, start.Nanosecond(), start.Location())
+	return time.Date(t.Year(), t.Month(), day, hour, minute, second, start.Nanosecond(), start.Location())
+}
+
+func (f frequencyMonth) getStart(start time.Time, t time.Time) time.Time {
+	r := f.getBase(start, t)
+
+	if !r.Before(t) {
+		r = r.AddDate(0, -1, 0)
+	}
+
+	return r
+}
+
+func (f frequencyMonth) getNextStart(start time.Time, t time.Time) time.Time {
+	r := f.getBase(start, t)
 
 	if !r.After(t) {
 		r = r.AddDate(0, 1, 0)
@@ -413,13 +443,26 @@ func (frequencyMonth) nextOccurence(start time.Time, t time.Time) time.Time {
 
 type frequencyWeek struct{}
 
-func (frequencyWeek) nextOccurence(start time.Time, t time.Time) time.Time {
+func (frequencyWeek) getBase(start time.Time, t time.Time) time.Time {
 	t = t.In(start.Location())
 
 	weekday := start.Weekday()
 	hour, minute, second := start.Clock()
 
-	r := time.Date(t.Year(), t.Month(), t.Day()+int(weekday)-int(t.Weekday()), hour, minute, second, start.Nanosecond(), start.Location())
+	return time.Date(t.Year(), t.Month(), t.Day()+int(weekday)-int(t.Weekday()), hour, minute, second, start.Nanosecond(), start.Location())
+}
+
+func (f frequencyWeek) getStart(start time.Time, t time.Time) time.Time {
+	r := f.getBase(start, t)
+
+	if !r.Before(t) {
+		r = r.AddDate(0, 0, -7)
+	}
+
+	return r
+}
+func (f frequencyWeek) getNextStart(start time.Time, t time.Time) time.Time {
+	r := f.getBase(start, t)
 
 	if !r.After(t) {
 		r = r.AddDate(0, 0, 7)
@@ -430,12 +473,26 @@ func (frequencyWeek) nextOccurence(start time.Time, t time.Time) time.Time {
 
 type frequencyDay struct{}
 
-func (frequencyDay) nextOccurence(start time.Time, t time.Time) time.Time {
+func (frequencyDay) getBase(start time.Time, t time.Time) time.Time {
 	t = t.In(start.Location())
 
 	hour, minute, second := start.Clock()
 
-	r := time.Date(t.Year(), t.Month(), t.Day(), hour, minute, second, start.Nanosecond(), start.Location())
+	return time.Date(t.Year(), t.Month(), t.Day(), hour, minute, second, start.Nanosecond(), start.Location())
+}
+
+func (f frequencyDay) getStart(start time.Time, t time.Time) time.Time {
+	r := f.getBase(start, t)
+
+	if !r.Before(t) {
+		r = r.AddDate(0, 0, -1)
+	}
+
+	return r
+}
+
+func (f frequencyDay) getNextStart(start time.Time, t time.Time) time.Time {
+	r := f.getBase(start, t)
 
 	if !r.After(t) {
 		r = r.AddDate(0, 0, 1)
@@ -446,12 +503,26 @@ func (frequencyDay) nextOccurence(start time.Time, t time.Time) time.Time {
 
 type frequencyHour struct{}
 
-func (frequencyHour) nextOccurence(start time.Time, t time.Time) time.Time {
+func (frequencyHour) getBase(start time.Time, t time.Time) time.Time {
 	t = t.In(start.Location())
 
 	_, minute, second := start.Clock()
 
-	r := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), minute, second, start.Nanosecond(), start.Location())
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), minute, second, start.Nanosecond(), start.Location())
+}
+
+func (f frequencyHour) getStart(start time.Time, t time.Time) time.Time {
+	r := f.getBase(start, t)
+
+	if !r.Before(t) {
+		r = r.Add(-time.Hour)
+	}
+
+	return r
+}
+
+func (f frequencyHour) getNextStart(start time.Time, t time.Time) time.Time {
+	r := f.getBase(start, t)
 
 	if !r.After(t) {
 		r = r.Add(time.Hour)
@@ -462,12 +533,26 @@ func (frequencyHour) nextOccurence(start time.Time, t time.Time) time.Time {
 
 type frequencyMinute struct{}
 
-func (frequencyMinute) nextOccurence(start time.Time, t time.Time) time.Time {
+func (frequencyMinute) getBase(start time.Time, t time.Time) time.Time {
 	t = t.In(start.Location())
 
 	_, _, second := start.Clock()
 
-	r := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), second, start.Nanosecond(), start.Location())
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), second, start.Nanosecond(), start.Location())
+}
+
+func (f frequencyMinute) getStart(start time.Time, t time.Time) time.Time {
+	r := f.getBase(start, t)
+
+	if !r.Before(t) {
+		r = r.Add(-time.Minute)
+	}
+
+	return r
+}
+
+func (f frequencyMinute) getNextStart(start time.Time, t time.Time) time.Time {
+	r := f.getBase(start, t)
 
 	if !r.After(t) {
 		r = r.Add(time.Minute)
@@ -478,10 +563,24 @@ func (frequencyMinute) nextOccurence(start time.Time, t time.Time) time.Time {
 
 type frequencySecond struct{}
 
-func (frequencySecond) nextOccurence(start time.Time, t time.Time) time.Time {
+func (frequencySecond) getBase(start time.Time, t time.Time) time.Time {
 	t = t.In(start.Location())
 
-	r := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), start.Nanosecond(), start.Location())
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), start.Nanosecond(), start.Location())
+}
+
+func (f frequencySecond) getStart(start time.Time, t time.Time) time.Time {
+	r := f.getBase(start, t)
+
+	if !r.Before(t) {
+		r = r.Add(-time.Second)
+	}
+
+	return r
+}
+
+func (f frequencySecond) getNextStart(start time.Time, t time.Time) time.Time {
+	r := f.getBase(start, t)
 
 	if !r.After(t) {
 		r = r.Add(time.Second)
