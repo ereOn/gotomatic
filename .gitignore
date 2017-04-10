@@ -23,5 +23,6 @@ _testmain.go
 *.test
 *.prof
 
-# Coverage file
+# Coverage & tracing files.
 coverage
+trace
