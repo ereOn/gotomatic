@@ -366,8 +366,8 @@ func (r compositeRange) String() string {
 // Frequency represents a frequency.
 type Frequency interface {
 	getBase(start time.Time, t time.Time) time.Time
-	getStart(start time.Time, t time.Time) time.Time
-	getNextStart(start time.Time, t time.Time) time.Time
+	Previous(start time.Time, t time.Time) time.Time
+	Next(start time.Time, t time.Time) time.Time
 }
 
 var (
@@ -390,7 +390,7 @@ func (frequencyYear) getBase(start time.Time, t time.Time) time.Time {
 	return time.Date(t.Year(), month, day, hour, minute, second, start.Nanosecond(), start.Location())
 }
 
-func (f frequencyYear) getStart(start time.Time, t time.Time) time.Time {
+func (f frequencyYear) Previous(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
 	if !r.Before(t) {
@@ -400,7 +400,7 @@ func (f frequencyYear) getStart(start time.Time, t time.Time) time.Time {
 	return r
 }
 
-func (f frequencyYear) getNextStart(start time.Time, t time.Time) time.Time {
+func (f frequencyYear) Next(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
 	if !r.After(t) {
@@ -421,7 +421,7 @@ func (frequencyMonth) getBase(start time.Time, t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), day, hour, minute, second, start.Nanosecond(), start.Location())
 }
 
-func (f frequencyMonth) getStart(start time.Time, t time.Time) time.Time {
+func (f frequencyMonth) Previous(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
 	if !r.Before(t) {
@@ -431,7 +431,7 @@ func (f frequencyMonth) getStart(start time.Time, t time.Time) time.Time {
 	return r
 }
 
-func (f frequencyMonth) getNextStart(start time.Time, t time.Time) time.Time {
+func (f frequencyMonth) Next(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
 	if !r.After(t) {
@@ -452,7 +452,7 @@ func (frequencyWeek) getBase(start time.Time, t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day()+int(weekday)-int(t.Weekday()), hour, minute, second, start.Nanosecond(), start.Location())
 }
 
-func (f frequencyWeek) getStart(start time.Time, t time.Time) time.Time {
+func (f frequencyWeek) Previous(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
 	if !r.Before(t) {
@@ -461,7 +461,7 @@ func (f frequencyWeek) getStart(start time.Time, t time.Time) time.Time {
 
 	return r
 }
-func (f frequencyWeek) getNextStart(start time.Time, t time.Time) time.Time {
+func (f frequencyWeek) Next(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
 	if !r.After(t) {
@@ -481,7 +481,7 @@ func (frequencyDay) getBase(start time.Time, t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), hour, minute, second, start.Nanosecond(), start.Location())
 }
 
-func (f frequencyDay) getStart(start time.Time, t time.Time) time.Time {
+func (f frequencyDay) Previous(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
 	if !r.Before(t) {
@@ -491,7 +491,7 @@ func (f frequencyDay) getStart(start time.Time, t time.Time) time.Time {
 	return r
 }
 
-func (f frequencyDay) getNextStart(start time.Time, t time.Time) time.Time {
+func (f frequencyDay) Next(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
 	if !r.After(t) {
@@ -511,7 +511,7 @@ func (frequencyHour) getBase(start time.Time, t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), minute, second, start.Nanosecond(), start.Location())
 }
 
-func (f frequencyHour) getStart(start time.Time, t time.Time) time.Time {
+func (f frequencyHour) Previous(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
 	if !r.Before(t) {
@@ -521,7 +521,7 @@ func (f frequencyHour) getStart(start time.Time, t time.Time) time.Time {
 	return r
 }
 
-func (f frequencyHour) getNextStart(start time.Time, t time.Time) time.Time {
+func (f frequencyHour) Next(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
 	if !r.After(t) {
@@ -541,7 +541,7 @@ func (frequencyMinute) getBase(start time.Time, t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), second, start.Nanosecond(), start.Location())
 }
 
-func (f frequencyMinute) getStart(start time.Time, t time.Time) time.Time {
+func (f frequencyMinute) Previous(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
 	if !r.Before(t) {
@@ -551,7 +551,7 @@ func (f frequencyMinute) getStart(start time.Time, t time.Time) time.Time {
 	return r
 }
 
-func (f frequencyMinute) getNextStart(start time.Time, t time.Time) time.Time {
+func (f frequencyMinute) Next(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
 	if !r.After(t) {
@@ -569,7 +569,7 @@ func (frequencySecond) getBase(start time.Time, t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), start.Nanosecond(), start.Location())
 }
 
-func (f frequencySecond) getStart(start time.Time, t time.Time) time.Time {
+func (f frequencySecond) Previous(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
 	if !r.Before(t) {
@@ -579,7 +579,7 @@ func (f frequencySecond) getStart(start time.Time, t time.Time) time.Time {
 	return r
 }
 
-func (f frequencySecond) getNextStart(start time.Time, t time.Time) time.Time {
+func (f frequencySecond) Next(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
 	if !r.After(t) {
