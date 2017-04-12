@@ -1,32 +1,14 @@
 package conditional
 
 import (
-	"fmt"
-	"strings"
 	"time"
 )
 
-// TimeRange represents a time range.
-type TimeRange interface {
-	// Contains returns true if the specified time is contained in the range,
-	// false otherwise.
-	Contains(time time.Time) bool
-
-	// Next returns the next time that will start the range.
-	NextStart(time time.Time) time.Time
-
-	// Next returns the next time that will stop the range.
-	NextStop(time time.Time) time.Time
-
-	// String returns the string representation of the time range.
-	String() string
-}
-
 // TimeCondition represents a condition that is met as long as the current time
-// is in the specified range.
+// matches the specified moment.
 type TimeCondition struct {
 	Condition
-	TimeRange TimeRange
+	Moment    Moment
 	timeFunc  func() time.Time
 	sleepFunc func(time.Duration, <-chan struct{}) bool
 	done      chan struct{}
@@ -45,9 +27,9 @@ func sleep(duration time.Duration, interrupt <-chan struct{}) bool {
 }
 
 // NewTimeCondition instantiates a new TimeCondition.
-func NewTimeCondition(timeRange TimeRange, options ...TimeConditionOption) *TimeCondition {
+func NewTimeCondition(moment Moment, options ...TimeConditionOption) *TimeCondition {
 	condition := &TimeCondition{
-		TimeRange: timeRange,
+		Moment:    moment,
 		timeFunc:  time.Now,
 		sleepFunc: sleep,
 		done:      make(chan struct{}),
@@ -57,7 +39,8 @@ func NewTimeCondition(timeRange TimeRange, options ...TimeConditionOption) *Time
 		option.apply(condition)
 	}
 
-	condition.Condition = NewManualCondition(timeRange.Contains(condition.timeFunc()))
+	inMoment, _ := moment.NextInterval(condition.timeFunc())
+	condition.Condition = NewManualCondition(inMoment)
 
 	go condition.checkTime()
 
@@ -107,260 +90,12 @@ func (condition *TimeCondition) checkTime() {
 
 	for condition.sleepFunc(delay, condition.done) {
 		now := condition.timeFunc()
-		var next time.Time
 
-		if condition.TimeRange.Contains(now) {
-			next = condition.TimeRange.NextStop(now)
-			condition.Condition.(*ManualCondition).Set(true)
-		} else {
-			next = condition.TimeRange.NextStart(now)
-			condition.Condition.(*ManualCondition).Set(false)
-		}
+		inMoment, nextChange := condition.Moment.NextInterval(now)
+		condition.Condition.(*ManualCondition).Set(inMoment)
 
-		delay = next.Sub(now)
+		delay = nextChange.Sub(now)
 	}
-}
-
-// DayTime represent at time of the day.
-type DayTime time.Duration
-
-// NewDayTime creates a DayTime instance for its hour, minute and second parts.
-func NewDayTime(hour int, minute int, second int) DayTime {
-	return DayTime(
-		time.Duration(hour)*time.Hour +
-			time.Duration(minute)*time.Minute +
-			time.Duration(second)*time.Second,
-	)
-}
-
-// Hour returns the hour of the DayTime.
-func (d DayTime) Hour() int {
-	return int(time.Duration(d) / time.Hour)
-}
-
-// Minute returns the minute of the DayTime.
-func (d DayTime) Minute() int {
-	hours := time.Duration(d.Hour()) * time.Hour
-	return int((time.Duration(d) - hours) / time.Minute)
-}
-
-// Second returns the second of the DayTime.
-func (d DayTime) Second() int {
-	hours := time.Duration(d.Hour()) * time.Hour
-	minutes := time.Duration(d.Minute()) * time.Minute
-	return int((time.Duration(d) - hours - minutes) / time.Second)
-}
-
-// String returns the string representation of the DayTime.
-func (d DayTime) String() string {
-	return fmt.Sprintf("%02d:%02d:%02d", d.Hour(), d.Minute(), d.Second())
-}
-
-// DayTimeRange represents a range of hours within a day.
-//
-// If Start happens after Stop, the range will represents all hours *NOT*
-// between Start and Stop. For instance, if Start is 16:00:00 and Stop is
-// 12:00:00, the range represents all hours of the day before 12:00:00 and
-// after 16:00:00.
-type DayTimeRange struct {
-	Start DayTime
-	Stop  DayTime
-}
-
-// Contains returns true if the specified time is contained in the range,
-// false otherwise.
-func (r DayTimeRange) Contains(t time.Time) bool {
-	dayTime := NewDayTime(t.Clock())
-
-	if r.Start < r.Stop {
-		return r.Start <= dayTime && dayTime < r.Stop
-	}
-
-	return dayTime < r.Stop || dayTime >= r.Start
-}
-
-func next(t time.Time, ref DayTime) time.Time {
-	year, month, day := t.Date()
-	dayTime := NewDayTime(t.Clock())
-
-	if dayTime < ref {
-		return time.Date(year, month, day, ref.Hour(), ref.Minute(), ref.Second(), 0, t.Location())
-
-	}
-
-	return time.Date(year, month, day+1, ref.Hour(), ref.Minute(), ref.Second(), 0, t.Location())
-}
-
-// NextStart returns the next time that will start the range.
-func (r DayTimeRange) NextStart(t time.Time) time.Time {
-	return next(t, r.Start)
-}
-
-// NextStop returns the next time that will stop the range.
-func (r DayTimeRange) NextStop(t time.Time) time.Time {
-	return next(t, r.Stop)
-}
-
-// String returns the string representation of the DayTimeRange.
-func (r DayTimeRange) String() string {
-	return fmt.Sprintf("between %s and %s", r.Start, r.Stop)
-}
-
-// WeekdaysRange represents a range of days within a week.
-type WeekdaysRange struct {
-	Weekdays Weekdays
-}
-
-// Weekdays represents a list of week days.
-type Weekdays []time.Weekday
-
-// Contains returns true if the specified weekday is in the weekdays list.
-func (w Weekdays) Contains(weekday time.Weekday) bool {
-	for _, wd := range w {
-		if wd == weekday {
-			return true
-		}
-	}
-
-	return false
-}
-
-// Contains returns true if the specified time is contained in the range,
-// false otherwise.
-func (r WeekdaysRange) Contains(t time.Time) bool {
-	return r.Weekdays.Contains(t.Weekday())
-}
-
-// NextStart returns the next time that will start the range.
-func (r WeekdaysRange) NextStart(t time.Time) time.Time {
-	year, month, day := t.Date()
-	currentWeekday := t.Weekday()
-
-	// The default is to return next week.
-	result := time.Date(year, month, day+7, 0, 0, 0, 0, t.Location())
-
-	if len(r.Weekdays) < 7 {
-		if r.Contains(t) {
-			return r.NextStart(r.NextStop(t))
-		}
-
-		for i := 1; i <= 7; i = i + 1 {
-			weekday := currentWeekday + time.Weekday(i%7)
-
-			if r.Weekdays.Contains(weekday) {
-				result = time.Date(year, month, day+i, 0, 0, 0, 0, t.Location())
-				break
-			}
-		}
-	}
-
-	return result
-}
-
-// NextStop returns the next time that will stop the range.
-func (r WeekdaysRange) NextStop(t time.Time) time.Time {
-	year, month, day := t.Date()
-	currentWeekday := t.Weekday()
-
-	// The default is to return next week.
-	result := time.Date(year, month, day+7, 0, 0, 0, 0, t.Location())
-
-	if len(r.Weekdays) < 7 {
-		if !r.Contains(t) {
-			return r.NextStop(r.NextStart(t))
-		}
-
-		for i := 1; i <= 7; i = i + 1 {
-			weekday := currentWeekday + time.Weekday(i%7)
-
-			if !r.Weekdays.Contains(weekday) {
-				result = time.Date(year, month, day+int(weekday-currentWeekday), 0, 0, 0, 0, t.Location())
-				break
-			}
-		}
-	}
-
-	return result
-}
-
-// String returns the string representation of the WeekdaysRange.
-func (r WeekdaysRange) String() string {
-	s := make([]string, len(r.Weekdays), len(r.Weekdays))
-
-	for i, wd := range r.Weekdays {
-		s[i] = wd.String()
-	}
-
-	return strings.Join(s, ", ")
-}
-
-type compositeRange struct {
-	ranges   []TimeRange
-	operator CompositeOperator
-}
-
-// NewCompositeTimeRange creates a new TimeRange which is the composition of
-// several other TimeRanges.
-func NewCompositeTimeRange(operator CompositeOperator, ranges ...TimeRange) TimeRange {
-	if len(ranges) == 0 {
-		panic("cannot instantiate a composite range without at least one sub-range")
-	}
-
-	return &compositeRange{
-		ranges:   ranges,
-		operator: operator,
-	}
-}
-
-// Contains returns true if the specified time is contained in the range,
-// false otherwise.
-func (r compositeRange) Contains(t time.Time) bool {
-	values := make([]bool, len(r.ranges), len(r.ranges))
-
-	for i, r := range r.ranges {
-		values[i] = r.Contains(t)
-	}
-
-	return r.operator.Reduce(values)
-}
-
-// Next returns the next time that will start the range.
-func (r compositeRange) NextStart(t time.Time) time.Time {
-	var result time.Time
-
-	for _, r := range r.ranges {
-		// Because we don't know what the operator is going to be, we stop at
-		// the first possible change. This way we may wake up too soon, but
-		// never too late.
-		x := r.NextStart(t)
-		y := r.NextStop(t)
-
-		if x.Before(result) || (result == time.Time{}) {
-			result = x
-		}
-
-		if y.Before(result) {
-			result = y
-		}
-	}
-
-	return result
-}
-
-// Next returns the next time that will stop the range.
-func (r compositeRange) NextStop(t time.Time) time.Time {
-	return r.NextStart(t)
-}
-
-// String returns the string representation of the composite range.
-func (r compositeRange) String() string {
-	s := make([]string, len(r.ranges), len(r.ranges))
-
-	for i, r := range r.ranges {
-		s[i] = fmt.Sprintf("(%s)", r)
-	}
-
-	return strings.Join(s, fmt.Sprintf(" %s ", r.operator))
 }
 
 // Frequency represents a frequency.
@@ -371,12 +106,19 @@ type Frequency interface {
 }
 
 var (
-	FrequencyYear   = frequencyYear{}
-	FrequencyMonth  = frequencyMonth{}
-	FrequencyWeek   = frequencyWeek{}
-	FrequencyDay    = frequencyDay{}
-	FrequencyHour   = frequencyHour{}
+	// FrequencyYear represents a moment that happens every year.
+	FrequencyYear = frequencyYear{}
+	// FrequencyMonth represents a moment that happens every month.
+	FrequencyMonth = frequencyMonth{}
+	// FrequencyWeek represents a moment that happens every week.
+	FrequencyWeek = frequencyWeek{}
+	// FrequencyDay represents a moment that happens every day.
+	FrequencyDay = frequencyDay{}
+	// FrequencyHour represents a moment that happens every hour.
+	FrequencyHour = frequencyHour{}
+	// FrequencyMinute represents a moment that happens every minute.
 	FrequencyMinute = frequencyMinute{}
+	// FrequencySecond represents a moment that happens every second.
 	FrequencySecond = frequencySecond{}
 )
 
@@ -393,7 +135,7 @@ func (frequencyYear) getBase(start time.Time, t time.Time) time.Time {
 func (f frequencyYear) Previous(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
-	if !r.Before(t) {
+	if r.After(t) {
 		r = r.AddDate(-1, 0, 0)
 	}
 
@@ -424,7 +166,7 @@ func (frequencyMonth) getBase(start time.Time, t time.Time) time.Time {
 func (f frequencyMonth) Previous(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
-	if !r.Before(t) {
+	if r.After(t) {
 		r = r.AddDate(0, -1, 0)
 	}
 
@@ -455,7 +197,7 @@ func (frequencyWeek) getBase(start time.Time, t time.Time) time.Time {
 func (f frequencyWeek) Previous(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
-	if !r.Before(t) {
+	if r.After(t) {
 		r = r.AddDate(0, 0, -7)
 	}
 
@@ -484,7 +226,7 @@ func (frequencyDay) getBase(start time.Time, t time.Time) time.Time {
 func (f frequencyDay) Previous(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
-	if !r.Before(t) {
+	if r.After(t) {
 		r = r.AddDate(0, 0, -1)
 	}
 
@@ -514,7 +256,7 @@ func (frequencyHour) getBase(start time.Time, t time.Time) time.Time {
 func (f frequencyHour) Previous(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
-	if !r.Before(t) {
+	if r.After(t) {
 		r = r.Add(-time.Hour)
 	}
 
@@ -544,7 +286,7 @@ func (frequencyMinute) getBase(start time.Time, t time.Time) time.Time {
 func (f frequencyMinute) Previous(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
-	if !r.Before(t) {
+	if r.After(t) {
 		r = r.Add(-time.Minute)
 	}
 
@@ -572,7 +314,7 @@ func (frequencySecond) getBase(start time.Time, t time.Time) time.Time {
 func (f frequencySecond) Previous(start time.Time, t time.Time) time.Time {
 	r := f.getBase(start, t)
 
-	if !r.Before(t) {
+	if r.After(t) {
 		r = r.Add(-time.Second)
 	}
 
@@ -600,6 +342,15 @@ type recurrentMoment struct {
 	Frequency Frequency
 }
 
+// NewRecurrentMoment instantiates a new recurrent moment.
+func NewRecurrentMoment(start, stop time.Time, frequency Frequency) Moment {
+	return recurrentMoment{
+		Start:     start,
+		Stop:      stop,
+		Frequency: frequency,
+	}
+}
+
 // NextInterval returns a boolean flag that indicates whether the specified
 // time is within the interval, and the time of the next interval boundary.
 func (r recurrentMoment) NextInterval(t time.Time) (bool, time.Time) {
@@ -607,7 +358,7 @@ func (r recurrentMoment) NextInterval(t time.Time) (bool, time.Time) {
 	nextStart := r.Frequency.Next(r.Start, t)
 	currentStop := r.Frequency.Next(r.Stop, previousStart)
 
-	if currentStop.Before(t) {
+	if !currentStop.After(t) {
 		return false, nextStart
 	}
 
