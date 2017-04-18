@@ -27,7 +27,6 @@ func TestGenericConditionSerialization(t *testing.T) {
 		NewManualCondition(false),
 	} {
 		defer reference.Close()
-		reference.SetName("foo")
 
 		for _, encoder := range []ConditionEncoder{
 			JSONEncoder{},
@@ -50,10 +49,6 @@ func TestGenericConditionSerialization(t *testing.T) {
 				t.Errorf("deserialized condition should not be nil for %s", encoder)
 			}
 
-			if result.Name() != "foo" {
-				t.Errorf("deserialized condition should be named `foo` but is named `%s`", result.Name())
-			}
-
 			err = encoder.Unmarshal([]byte{0}, &result)
 
 			if err == nil {
@@ -63,39 +58,13 @@ func TestGenericConditionSerialization(t *testing.T) {
 	}
 }
 
-func TestGenericConditionSerializationErrorNoType(t *testing.T) {
-	encoder := commonEncoder{}
-	var result Condition
-	values := map[string]interface{}{}
-	expectedError := ErrTypeMissing
-	err := encoder.extract(values, &result)
-
-	if err != expectedError {
-		t.Errorf("expected error to be %s, but got %s", expectedError, err)
-	}
-}
-
-func TestGenericConditionSerializationErrorInvalidType(t *testing.T) {
-	encoder := commonEncoder{}
-	var result Condition
-	values := map[string]interface{}{
-		"type": true,
-	}
-	expectedError := ErrTypeInvalid
-	err := encoder.extract(values, &result)
-
-	if err != expectedError {
-		t.Errorf("expected error to be %s, but got %s", expectedError, err)
-	}
-}
-
 func TestGenericConditionSerializationErrorUnknownType(t *testing.T) {
 	encoder := commonEncoder{}
 	var result Condition
-	values := map[string]interface{}{
-		"type": "unknown",
+	document := conditionDocument{
+		Type: "unknown",
 	}
-	err := encoder.extract(values, &result)
+	err := encoder.decode(document, &result)
 
 	if err == nil {
 		t.Errorf("expected error")
@@ -105,7 +74,6 @@ func TestGenericConditionSerializationErrorUnknownType(t *testing.T) {
 func TestManualConditionSerialization(t *testing.T) {
 	reference := NewManualCondition(false)
 	defer reference.Close()
-	reference.SetName("foo")
 
 	for _, encoder := range []ConditionEncoder{
 		JSONEncoder{},
@@ -121,7 +89,7 @@ func TestManualConditionSerialization(t *testing.T) {
 		err = encoder.Unmarshal(data, &result)
 
 		if err != nil {
-			t.Errorf("deserialization should have succeeded for %s: %s", encoder, err)
+			t.Errorf("deserialization should have succeeded for %s: %s. Data: %s\n", encoder, err, data)
 		}
 
 		if _, ok := result.(*ManualCondition); !ok {

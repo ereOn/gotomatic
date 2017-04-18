@@ -23,9 +23,7 @@ type Condition interface {
 	// Calling Close() twice or more has no effect.
 	Close() error
 
-	// Name returns the name associated with the condition, if there is one.
-	Name() string
-
-	// SetName sets the name associated with the condition.
-	SetName(name string)
+	documentType() string
+	documentParams() interface{}
+	decodeDocumentParams(params interface{}) error
 }
