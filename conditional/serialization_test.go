@@ -43,10 +43,19 @@ func TestRegistryDecodeCondition(t *testing.T) {
 		{"fixture/invalid-inverse-condition.yaml", true},
 		{"fixture/invalid-delay-condition.yaml", true},
 		{"fixture/invalid-delay-condition-subcondition.yaml", true},
+		{"fixture/invalid-composite-condition-and.yaml", true},
+		{"fixture/invalid-composite-condition-or.yaml", true},
+		{"fixture/invalid-composite-condition-xor.yaml", true},
+		{"fixture/invalid-composite-condition-and-subcondition.yaml", true},
+		{"fixture/invalid-composite-condition-or-subcondition.yaml", true},
+		{"fixture/invalid-composite-condition-xor-subcondition.yaml", true},
 		{"fixture/unknown-type.yaml", true},
 		{"fixture/manual-condition.yaml", false},
 		{"fixture/inverse-condition.yaml", false},
 		{"fixture/delay-condition.yaml", false},
+		{"fixture/composite-condition-and.yaml", false},
+		{"fixture/composite-condition-or.yaml", false},
+		{"fixture/composite-condition-xor.yaml", false},
 	}
 
 	for _, testCase := range testCases {

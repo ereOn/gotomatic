@@ -1,0 +1,4 @@
+type: xor
+conditions:
+  - type: manual
+  - type: manual

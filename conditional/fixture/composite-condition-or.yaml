@@ -1,0 +1,4 @@
+type: or
+conditions:
+  - type: manual
+  - type: manual

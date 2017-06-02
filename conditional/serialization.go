@@ -25,6 +25,10 @@ type delayConditionParams struct {
 	Delay     time.Duration
 }
 
+type compositeConditionParams struct {
+	Conditions []interface{}
+}
+
 // Registry represents a condition registry.
 type Registry interface {
 	DecodeCondition(input interface{}) (Condition, error)
@@ -50,6 +54,25 @@ func (r *registryImpl) decode(m interface{}, rawVal interface{}) error {
 	})
 
 	return decoder.Decode(m)
+}
+
+func (r *registryImpl) decodeCompositeCondition(operator CompositeOperator, input interface{}) (Condition, error) {
+	var err error
+	var params compositeConditionParams
+
+	if err = r.decode(input, &params); err != nil {
+		return nil, err
+	}
+
+	subconditions := make([]Condition, len(params.Conditions))
+
+	for i, x := range params.Conditions {
+		if subconditions[i], err = r.DecodeCondition(x); err != nil {
+			return nil, err
+		}
+	}
+
+	return NewCompositeCondition(operator, subconditions...), nil
 }
 
 // DecodeCondition decodes a condition from an arbitrary input structure, if
@@ -109,6 +132,18 @@ func (r *registryImpl) DecodeCondition(input interface{}) (condition Condition, 
 		}
 
 		condition = Delay(subcondition, params.Delay)
+	case "and":
+		if condition, err = r.decodeCompositeCondition(OperatorAnd, input); err != nil {
+			return nil, err
+		}
+	case "or":
+		if condition, err = r.decodeCompositeCondition(OperatorOr, input); err != nil {
+			return nil, err
+		}
+	case "xor":
+		if condition, err = r.decodeCompositeCondition(OperatorXor, input); err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("unknown condition type: %s", declaration.Type)
 	}
