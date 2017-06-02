@@ -1,99 +1,119 @@
 package conditional
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
+
+	yaml "gopkg.in/yaml.v2"
 )
 
-func TestJSONEncoderString(t *testing.T) {
-	value := JSONEncoder{}.String()
-	expected := "JSONEncoder"
+func readYAMLFixture(path string) interface{} {
+	f, err := os.Open(path)
 
-	if value != expected {
-		t.Errorf("expected `%s`, got `%s`", expected, value)
+	if err != nil {
+		panic(err)
+	}
+
+	data, err := ioutil.ReadAll(f)
+
+	if err != nil {
+		panic(err)
+	}
+
+	var result interface{}
+
+	err = yaml.Unmarshal(data, &result)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return result
+}
+
+func TestRegistryDecodeCondition(t *testing.T) {
+	testCases := []struct {
+		Fixture       string
+		ExpectFailure bool
+	}{
+		{"fixture/invalid.yaml", true},
+		{"fixture/invalid-name.yaml", true},
+		{"fixture/invalid-manual-condition.yaml", true},
+		{"fixture/invalid-inverse-condition.yaml", true},
+		{"fixture/invalid-delay-condition.yaml", true},
+		{"fixture/invalid-delay-condition-subcondition.yaml", true},
+		{"fixture/unknown-type.yaml", true},
+		{"fixture/manual-condition.yaml", false},
+		{"fixture/inverse-condition.yaml", false},
+		{"fixture/delay-condition.yaml", false},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Fixture, func(t *testing.T) {
+			registry := NewRegistry()
+			defer registry.Close()
+
+			data := readYAMLFixture(testCase.Fixture)
+			condition, err := registry.DecodeCondition(data)
+
+			if testCase.ExpectFailure {
+				if err == nil {
+					t.Error("expected a failure but didn't get one")
+				}
+
+				if condition != nil {
+					t.Errorf("expected no condition but got: %v", condition)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("expected no error but got: %s", err)
+				}
+
+				if condition == nil {
+					t.Error("expected a condition but didn't get one")
+				}
+			}
+		})
 	}
 }
 
-func TestYAMLEncoderString(t *testing.T) {
-	value := YAMLEncoder{}.String()
-	expected := "YAMLEncoder"
-
-	if value != expected {
-		t.Errorf("expected `%s`, got `%s`", expected, value)
+func TestRegistryDecodeConditions(t *testing.T) {
+	testCases := []struct {
+		Fixture       string
+		ExpectFailure bool
+	}{
+		{"fixture/invalid.yaml", true},
+		{"fixture/invalid-list.yaml", true},
+		{"fixture/duplicate-list.yaml", true},
+		{"fixture/complete.yaml", false},
 	}
-}
 
-func TestGenericConditionSerialization(t *testing.T) {
-	for _, reference := range []Condition{
-		NewManualCondition(false),
-	} {
-		defer reference.Close()
+	for _, testCase := range testCases {
+		t.Run(testCase.Fixture, func(t *testing.T) {
+			registry := NewRegistry()
+			defer registry.Close()
 
-		for _, encoder := range []ConditionEncoder{
-			JSONEncoder{},
-			YAMLEncoder{},
-		} {
-			data, err := encoder.Marshal(reference)
+			data := readYAMLFixture(testCase.Fixture)
+			conditions, err := registry.DecodeConditions(data)
 
-			if err != nil {
-				t.Errorf("serialization should have succeeded for %s: %s", encoder, err)
+			if testCase.ExpectFailure {
+				if err == nil {
+					t.Error("expected a failure but didn't get one")
+				}
+
+				if conditions != nil {
+					t.Errorf("expected no conditions but got: %v", conditions)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("expected no error but got: %s", err)
+				}
+
+				if conditions == nil {
+					t.Error("expected a list of conditions but didn't get one")
+				}
 			}
-
-			var result Condition
-			err = encoder.Unmarshal(data, &result)
-
-			if err != nil {
-				t.Errorf("deserialization should have succeeded for %s: %s", encoder, err)
-			}
-
-			if result == nil {
-				t.Errorf("deserialized condition should not be nil for %s", encoder)
-			}
-
-			err = encoder.Unmarshal([]byte{0}, &result)
-
-			if err == nil {
-				t.Errorf("expected a deserialization error")
-			}
-		}
-	}
-}
-
-func TestGenericConditionSerializationErrorUnknownType(t *testing.T) {
-	encoder := commonEncoder{}
-	var result Condition
-	document := conditionDocument{
-		Type: "unknown",
-	}
-	err := encoder.decode(document, &result)
-
-	if err == nil {
-		t.Errorf("expected error")
-	}
-}
-
-func TestManualConditionSerialization(t *testing.T) {
-	reference := NewManualCondition(false)
-	defer reference.Close()
-
-	for _, encoder := range []ConditionEncoder{
-		JSONEncoder{},
-		YAMLEncoder{},
-	} {
-		data, err := encoder.Marshal(reference)
-
-		if err != nil {
-			t.Errorf("serialization should have succeeded for %s: %s", encoder, err)
-		}
-
-		var result Condition
-		err = encoder.Unmarshal(data, &result)
-
-		if err != nil {
-			t.Errorf("deserialization should have succeeded for %s: %s. Data: %s\n", encoder, err, data)
-		}
-
-		if _, ok := result.(*ManualCondition); !ok {
-			t.Errorf("condition was deserialized to the wrong type")
-		}
+		})
 	}
 }

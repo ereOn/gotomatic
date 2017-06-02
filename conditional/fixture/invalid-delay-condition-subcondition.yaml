@@ -1,0 +1,3 @@
+type: delay
+condition: 2
+delay: 5m

@@ -1,0 +1,4 @@
+- name: a
+  type: manual
+- type: manual
+- a

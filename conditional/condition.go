@@ -22,8 +22,4 @@ type Condition interface {
 	//
 	// Calling Close() twice or more has no effect.
 	Close() error
-
-	documentType() string
-	documentParams() interface{}
-	decodeDocumentParams(params interface{}) error
 }

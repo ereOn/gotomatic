@@ -1,103 +1,165 @@
 package conditional
 
 import (
-	"encoding/json"
 	"fmt"
+	"time"
 
-	yaml "gopkg.in/yaml.v2"
+	"github.com/mitchellh/mapstructure"
 )
 
-// ConditionEncoder is the interface for all condition encoders.
-type ConditionEncoder interface {
-	Marshal(Condition) ([]byte, error)
-	Unmarshal([]byte, *Condition) error
+type conditionDeclaration struct {
+	Name string
+	Type string
 }
 
-type commonEncoder struct{}
-
-// JSONEncoder is the JSON encoder class for conditions.
-type JSONEncoder struct{ commonEncoder }
-
-// YAMLEncoder is the YAML encoder class for conditions.
-type YAMLEncoder struct{ commonEncoder }
-
-type conditionDocument struct {
-	Type   string      `json:"type" yaml:"type"`
-	Name   string      `json:"name,omitempty" yaml:"name,omitempty"`
-	Params interface{} `json:"params,omitempty" yaml:"params,omitempty"`
+type manualConditionParams struct {
+	State bool
 }
 
-func (e commonEncoder) decode(document conditionDocument, condition *Condition) error {
-	switch document.Type {
+type inverseConditionParams struct {
+	Condition interface{}
+}
+
+type delayConditionParams struct {
+	Condition interface{}
+	Delay     time.Duration
+}
+
+// Registry represents a condition registry.
+type Registry interface {
+	DecodeCondition(input interface{}) (Condition, error)
+	DecodeConditions(input interface{}) ([]Condition, error)
+	Close()
+}
+
+type registryImpl struct {
+	index map[string]Condition
+}
+
+// NewRegistry instantiates a new condition registry.
+func NewRegistry() Registry {
+	return &registryImpl{
+		index: make(map[string]Condition),
+	}
+}
+
+func (r *registryImpl) decode(m interface{}, rawVal interface{}) error {
+	decoder, _ := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		DecodeHook: mapstructure.StringToTimeDurationHookFunc(),
+		Result:     rawVal,
+	})
+
+	return decoder.Decode(m)
+}
+
+// DecodeCondition decodes a condition from an arbitrary input structure, if
+// possible.
+func (r *registryImpl) DecodeCondition(input interface{}) (condition Condition, err error) {
+	var name string
+
+	if err = r.decode(input, &name); err == nil {
+		var ok bool
+
+		if condition, ok = r.index[name]; !ok {
+			return nil, fmt.Errorf("no condition found with the name `%s`", name)
+		}
+
+		return Dereference(condition), err
+	}
+
+	var declaration conditionDeclaration
+
+	if err = r.decode(input, &declaration); err != nil {
+		return nil, err
+	}
+
+	switch declaration.Type {
 	case "manual":
-		*condition = &ManualCondition{}
+		var params manualConditionParams
+
+		if err = r.decode(input, &params); err != nil {
+			return nil, err
+		}
+
+		condition = NewManualCondition(params.State)
+	case "inverse":
+		var params inverseConditionParams
+
+		// Parsing those specific params can never fail.
+		r.decode(input, &params)
+
+		var subcondition Condition
+
+		if subcondition, err = r.DecodeCondition(params.Condition); err != nil {
+			return nil, err
+		}
+
+		condition = Inverse(subcondition)
+	case "delay":
+		var params delayConditionParams
+
+		if err = r.decode(input, &params); err != nil {
+			return nil, err
+		}
+
+		var subcondition Condition
+
+		if subcondition, err = r.DecodeCondition(params.Condition); err != nil {
+			return nil, err
+		}
+
+		condition = Delay(subcondition, params.Delay)
 	default:
-		return fmt.Errorf("unknown type `%s` for condition", document.Type)
+		return nil, fmt.Errorf("unknown condition type: %s", declaration.Type)
 	}
 
-	return (*condition).decodeDocumentParams(document.Params)
-}
+	if declaration.Name != "" {
+		if _, ok := r.index[declaration.Name]; ok {
+			condition.Close()
 
-// String returns a string that describes the encoder.
-func (JSONEncoder) String() string { return "JSONEncoder" }
+			return nil, fmt.Errorf("a condition with the name `%s` was already registered", declaration.Name)
+		}
 
-// Marshal serializes a Condition.
-func (JSONEncoder) Marshal(condition Condition) ([]byte, error) {
-	return json.Marshal(conditionDocument{
-		Type:   condition.documentType(),
-		Params: condition.documentParams(),
-	})
-}
+		r.index[declaration.Name] = condition
 
-// Unmarshal deserializes a Condition.
-func (e JSONEncoder) Unmarshal(data []byte, condition *Condition) error {
-	document := conditionDocument{}
-
-	if err := json.Unmarshal(data, &document); err != nil {
-		return err
+		condition = Dereference(condition)
 	}
 
-	return e.decode(document, condition)
+	return condition, nil
 }
 
-// String returns a string that describes the encoder.
-func (YAMLEncoder) String() string { return "YAMLEncoder" }
+type conditionDeclarations []interface{}
 
-// Marshal serializes a Condition.
-func (YAMLEncoder) Marshal(condition Condition) ([]byte, error) {
-	return yaml.Marshal(conditionDocument{
-		Type:   condition.documentType(),
-		Params: condition,
-	})
-}
+// DecodeConditions decodes a list of conditions from an arbitrary input structure, if
+// possible.
+func (r *registryImpl) DecodeConditions(input interface{}) (conditions []Condition, err error) {
+	var declarations conditionDeclarations
 
-// Unmarshal deserializes a Condition.
-func (e YAMLEncoder) Unmarshal(data []byte, condition *Condition) error {
-	document := conditionDocument{}
-
-	if err := yaml.Unmarshal(data, &document); err != nil {
-		return err
+	if err = r.decode(input, &declarations); err != nil {
+		return nil, err
 	}
 
-	return e.decode(document, condition)
+	for _, declaration := range declarations {
+		condition, err := r.DecodeCondition(declaration)
+
+		if err != nil {
+			for _, condition = range conditions {
+				condition.Close()
+			}
+
+			return nil, err
+		}
+
+		conditions = append(conditions, condition)
+	}
+
+	return conditions, nil
 }
 
-// Manual conditions.
+func (r *registryImpl) Close() {
+	for _, condition := range r.index {
+		condition.Close()
+	}
 
-func (c *ManualCondition) documentType() string {
-	return "manual"
-}
-
-type manualConditionParams struct{}
-
-func (c *ManualCondition) documentParams() interface{} {
-	return manualConditionParams{}
-}
-
-func (c *ManualCondition) decodeDocumentParams(params interface{}) error {
-	// This is not efficient, but simplifies the code *A LOT*.
-	data, _ := yaml.Marshal(params)
-	p := manualConditionParams{}
-
-	return yaml.Unmarshal(data, &p)
+	r.index = nil
 }

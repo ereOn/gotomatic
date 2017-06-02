@@ -1,0 +1,4 @@
+type: delay
+condition:
+  type: manual
+delay: 1s
