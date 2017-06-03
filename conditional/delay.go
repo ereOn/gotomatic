@@ -1,9 +1,6 @@
 package conditional
 
-import (
-	"reflect"
-	"time"
-)
+import "time"
 
 type delayedCondition struct {
 	Condition
@@ -79,28 +76,18 @@ func (condition delayedCondition) waitChange(state bool, channel <-chan error) {
 		channel: make(chan time.Time),
 	}
 
-	cases := make([]reflect.SelectCase, 3, 3)
-	cases[0] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(condition.done)}
-	cases[1] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(channel)}
-	cases[2] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(timer.Wait())}
-
 	for {
-		chosen, _, _ := reflect.Select(cases)
-
-		switch chosen {
-		case 0:
+		select {
+		case <-condition.done:
 			// The condition was closed.
 			timer.Stop()
 			return
-		case 1:
+		case <-channel:
 			// The underlying condition changed, let's rewait and start a timer.
 			state, channel = condition.subcondition.GetAndWaitChange()
-			cases[1] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(channel)}
-
 			timer.Stop()
 			timer = realTimer{timer: time.NewTimer(condition.Delay)}
-			cases[2] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(timer.Wait())}
-		case 2:
+		case <-timer.Wait():
 			// The timer expired. Let's apply the last recovered state.
 			condition.Condition.(*ManualCondition).Set(state)
 			timer = foreverTimer{
