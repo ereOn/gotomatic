@@ -1,0 +1,8 @@
+type: cut-off
+up: 1
+down: 2
+executor:
+  type: http
+  url: "http://localhost:8080"
+  status-codes:
+    - 200

@@ -1,0 +1,8 @@
+type: cut-off
+executor:
+  type: http
+  url: 2
+  method: 1
+  status-codes:
+    - {}
+

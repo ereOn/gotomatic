@@ -1,0 +1,5 @@
+type: cut-off
+executor:
+  type: cmd
+  command: 2
+  args: 2

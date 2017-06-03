@@ -51,6 +51,11 @@ func TestRegistryDecodeCondition(t *testing.T) {
 		{"fixture/invalid-composite-condition-or-subcondition.yaml", true},
 		{"fixture/invalid-composite-condition-xor-subcondition.yaml", true},
 		{"fixture/invalid-time-condition.yaml", true},
+		{"fixture/invalid-cut-off-condition.yaml", true},
+		{"fixture/invalid-cut-off-condition-invalid-executor.yaml", true},
+		{"fixture/invalid-cut-off-condition-invalid-cmd-executor.yaml", true},
+		{"fixture/invalid-cut-off-condition-invalid-http-executor.yaml", true},
+		{"fixture/invalid-cut-off-condition-unknown-executor.yaml", true},
 		{"fixture/unknown-type.yaml", true},
 		{"fixture/manual-condition.yaml", false},
 		{"fixture/inverse-condition.yaml", false},
@@ -59,6 +64,8 @@ func TestRegistryDecodeCondition(t *testing.T) {
 		{"fixture/composite-condition-or.yaml", false},
 		{"fixture/composite-condition-xor.yaml", false},
 		{"fixture/time-condition.yaml", false},
+		{"fixture/cut-off-condition-cmd.yaml", false},
+		{"fixture/cut-off-condition-http.yaml", false},
 	}
 
 	for _, testCase := range testCases {

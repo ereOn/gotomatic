@@ -37,6 +37,29 @@ type timeConditionParams struct {
 	Frequency Frequency
 }
 
+type cutOffConditionParams struct {
+	Up       uint
+	Down     uint
+	Period   time.Duration
+	Executor Executor
+}
+
+type externalCommandDeclaration struct {
+	Type    string
+	Timeout time.Duration
+}
+
+type cmdExternalCommandDeclaration struct {
+	Command string
+	Args    []string
+}
+
+type httpExternalCommandDeclaration struct {
+	Method      string
+	URL         string
+	StatusCodes []int
+}
+
 // Registry represents a condition registry.
 type Registry interface {
 	DecodeCondition(input interface{}) (Condition, error)
@@ -61,6 +84,7 @@ func (r *registryImpl) decode(m interface{}, rawVal interface{}) error {
 			mapstructure.StringToTimeDurationHookFunc(),
 			StringToTimeHookFunc(time.Local),
 			StringToFrequencyFunc(),
+			MapToExecutor(),
 		),
 		Result: rawVal,
 	})
@@ -161,12 +185,24 @@ func (r *registryImpl) DecodeCondition(input interface{}) (condition Condition, 
 			Frequency: FrequencyYear,
 		}
 
-		// Parsing those specific params can never fail.
 		if err := r.decode(input, &params); err != nil {
 			return nil, err
 		}
 
 		condition = NewTimeCondition(NewRecurrentMoment(params.Start, params.Stop, params.Frequency))
+	case "cut-off":
+		params := cutOffConditionParams{
+			Up:       0,
+			Down:     3,
+			Period:   time.Second * 5,
+			Executor: FalseExecutor,
+		}
+
+		if err := r.decode(input, &params); err != nil {
+			return nil, err
+		}
+
+		condition = NewCutOffCondition(params.Up, params.Down, params.Period, params.Executor)
 	default:
 		return nil, fmt.Errorf("unknown condition type: %s", declaration.Type)
 	}
@@ -311,5 +347,59 @@ func StringToFrequencyFunc() mapstructure.DecodeHookFunc {
 		}
 
 		return parseFrequency(data.(string))
+	}
+}
+
+// MapToExecutor transforms a dict into an external command.
+func MapToExecutor() mapstructure.DecodeHookFunc {
+	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+		if f.Kind() != reflect.Map {
+			return data, nil
+		}
+
+		if t != reflect.TypeOf((*Executor)(nil)).Elem() {
+			return data, nil
+		}
+
+		declaration := externalCommandDeclaration{
+			Timeout: time.Second,
+		}
+
+		err := mapstructure.Decode(data, &declaration)
+
+		if err != nil {
+			return data, err
+		}
+
+		switch declaration.Type {
+		case "cmd":
+			var params cmdExternalCommandDeclaration
+
+			err := mapstructure.Decode(data, &params)
+
+			if err != nil {
+				return data, err
+			}
+
+			return CommandExecutor(params.Command, params.Args...), nil
+		case "http":
+			params := httpExternalCommandDeclaration{
+				Method: "GET",
+				StatusCodes: []int{
+					200,
+					201,
+				},
+			}
+
+			err := mapstructure.Decode(data, &params)
+
+			if err != nil {
+				return data, err
+			}
+
+			return HTTPExecutor(params.Method, params.URL, params.StatusCodes, declaration.Timeout), nil
+		}
+
+		return data, fmt.Errorf("unknown command type \"%s\"", declaration.Type)
 	}
 }

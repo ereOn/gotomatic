@@ -1,0 +1,7 @@
+type: cut-off
+up: 1
+down: 2
+executor:
+  type: cmd
+  command: ping
+  args: ["localhost", "-c", "1", "-t", "1"]
