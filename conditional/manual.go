@@ -8,7 +8,7 @@ import (
 type ManualCondition struct {
 	lock      sync.Mutex
 	satisfied bool
-	channels  []chan struct{}
+	channels  []chan error
 }
 
 // NewManualCondition instantiates a new ManualCondition in the specified
@@ -16,7 +16,7 @@ type ManualCondition struct {
 func NewManualCondition(satisfied bool) *ManualCondition {
 	return &ManualCondition{
 		satisfied: satisfied,
-		channels:  make([]chan struct{}, 0, 0),
+		channels:  make([]chan error, 0, 0),
 	}
 }
 
@@ -25,8 +25,11 @@ func NewManualCondition(satisfied bool) *ManualCondition {
 //
 // If the condition already has the satisfied state at the moment of the
 // call, a closed channel is returned (which won't block).
-func (c *ManualCondition) Wait(satisfied bool) <-chan struct{} {
-	channel := make(chan struct{})
+//
+// If the condition is closed or the wait fails for whatever reason,
+// `ErrConditionClosed` is returned on the channel.
+func (c *ManualCondition) Wait(satisfied bool) <-chan error {
+	channel := make(chan error, 1)
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -42,8 +45,11 @@ func (c *ManualCondition) Wait(satisfied bool) <-chan struct{} {
 
 // GetAndWaitChange returns the current satisfied state of the condition as
 // well as a channel that will block until the condition state changes.
-func (c *ManualCondition) GetAndWaitChange() (bool, <-chan struct{}) {
-	channel := make(chan struct{})
+//
+// If the condition is closed or the wait fails for whatever reason,
+// `ErrConditionClosed` is returned on the channel.
+func (c *ManualCondition) GetAndWaitChange() (bool, <-chan error) {
+	channel := make(chan error, 1)
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -56,14 +62,20 @@ func (c *ManualCondition) GetAndWaitChange() (bool, <-chan struct{}) {
 // Close terminates the condition.
 //
 // Any pending wait on one of the returned channels via Wait() or
-// WaitChange() will be unblocked.
+// WaitChange() will be unblocked and `ErrConditionClosed` put in the wait
+// channels.
 //
 // Calling Close() twice or more has no effect.
 func (c *ManualCondition) Close() error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	c.unprotectedClose()
+	for _, channel := range c.channels {
+		channel <- ErrConditionClosed
+		close(channel)
+	}
+
+	c.channels = make([]chan error, 0, 0)
 
 	return nil
 }
@@ -79,20 +91,10 @@ func (c *ManualCondition) Set(satisfied bool) {
 	if satisfied != c.satisfied {
 		c.satisfied = satisfied
 
-		// This is an implementation detail but it just happens that closing
-		// the condition will have no undesirable side-effect yet does exactly
-		// what we want.
-		//
-		// The condition is *NOT* to be considered closed after this. It's
-		// magic.
-		c.unprotectedClose()
-	}
-}
+		for _, channel := range c.channels {
+			close(channel)
+		}
 
-func (c *ManualCondition) unprotectedClose() {
-	for _, channel := range c.channels {
-		close(channel)
+		c.channels = make([]chan error, 0, 0)
 	}
-
-	c.channels = make([]chan struct{}, 0, 0)
 }

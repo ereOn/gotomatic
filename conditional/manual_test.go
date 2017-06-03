@@ -6,11 +6,11 @@ import (
 
 func TestManualCondition(t *testing.T) {
 	condition := NewManualCondition(false)
-	defer condition.Close()
+	defer assertCloseCondition(t, condition)
 	assertConditionState(t, condition, false, "initialization to false")
 
 	condition = NewManualCondition(true)
-	defer condition.Close()
+	defer assertCloseCondition(t, condition)
 	assertConditionState(t, condition, true, "initialization to true")
 
 	condition.Set(true)

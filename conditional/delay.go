@@ -74,7 +74,7 @@ func (t foreverTimer) Stop() {
 	close(t.channel)
 }
 
-func (condition delayedCondition) waitChange(state bool, channel <-chan struct{}) {
+func (condition delayedCondition) waitChange(state bool, channel <-chan error) {
 	var timer timer = foreverTimer{
 		channel: make(chan time.Time),
 	}

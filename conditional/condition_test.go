@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func waitChannel(channel <-chan struct{}) chan bool {
+func waitChannel(channel <-chan error) chan bool {
 	timeout, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second))
 
 	result := make(chan bool)
@@ -49,5 +49,17 @@ func assertConditionChanged(t *testing.T, condition Condition, satisfied bool, c
 
 	if !<-result {
 		t.Errorf("condition should have changed after %s", ctx)
+	}
+}
+
+func assertCloseCondition(t *testing.T, condition Condition) {
+	_, channel := condition.GetAndWaitChange()
+
+	condition.Close()
+
+	err := <-channel
+
+	if err != ErrConditionClosed {
+		t.Errorf("condition channel returned an unexpected error: %s", err)
 	}
 }

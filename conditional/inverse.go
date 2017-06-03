@@ -15,13 +15,13 @@ type inversedCondition struct {
 //
 // If the condition already has the satisfied state at the moment of the
 // call, a closed channel is returned (which won't block).
-func (c *inversedCondition) Wait(satisfied bool) <-chan struct{} {
+func (c *inversedCondition) Wait(satisfied bool) <-chan error {
 	return c.Condition.Wait(!satisfied)
 }
 
 // GetAndWaitChange returns the current satisfied state of the condition as
 // well as a channel that will block until the condition state changes.
-func (c *inversedCondition) GetAndWaitChange() (bool, <-chan struct{}) {
+func (c *inversedCondition) GetAndWaitChange() (bool, <-chan error) {
 	state, channel := c.Condition.GetAndWaitChange()
 
 	return !state, channel
