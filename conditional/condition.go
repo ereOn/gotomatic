@@ -1,3 +1,5 @@
+// Package conditional defines condition primitives and logic to ease writing
+// of complex condition compositions.
 package conditional
 
 import "errors"
