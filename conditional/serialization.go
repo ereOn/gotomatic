@@ -2,6 +2,8 @@ package conditional
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
 	"time"
 
 	"github.com/mitchellh/mapstructure"
@@ -29,6 +31,12 @@ type compositeConditionParams struct {
 	Conditions []interface{}
 }
 
+type timeConditionParams struct {
+	Start     time.Time
+	Stop      time.Time
+	Frequency Frequency
+}
+
 // Registry represents a condition registry.
 type Registry interface {
 	DecodeCondition(input interface{}) (Condition, error)
@@ -49,8 +57,12 @@ func NewRegistry() Registry {
 
 func (r *registryImpl) decode(m interface{}, rawVal interface{}) error {
 	decoder, _ := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		DecodeHook: mapstructure.StringToTimeDurationHookFunc(),
-		Result:     rawVal,
+		DecodeHook: mapstructure.ComposeDecodeHookFunc(
+			mapstructure.StringToTimeDurationHookFunc(),
+			StringToTimeHookFunc(time.Local),
+			StringToFrequencyFunc(),
+		),
+		Result: rawVal,
 	})
 
 	return decoder.Decode(m)
@@ -144,6 +156,17 @@ func (r *registryImpl) DecodeCondition(input interface{}) (condition Condition, 
 		if condition, err = r.decodeCompositeCondition(OperatorXor, input); err != nil {
 			return nil, err
 		}
+	case "time":
+		params := timeConditionParams{
+			Frequency: FrequencyYear,
+		}
+
+		// Parsing those specific params can never fail.
+		if err := r.decode(input, &params); err != nil {
+			return nil, err
+		}
+
+		condition = NewTimeCondition(NewRecurrentMoment(params.Start, params.Stop, params.Frequency))
 	default:
 		return nil, fmt.Errorf("unknown condition type: %s", declaration.Type)
 	}
@@ -197,4 +220,96 @@ func (r *registryImpl) Close() {
 	}
 
 	r.index = nil
+}
+
+func parseTime(s string, loc *time.Location) (t time.Time, err error) {
+	formats := []string{
+		"15:04",
+		"15:04Z07:00",
+		"15:04:05",
+		"15:04:05Z07:00",
+		"02/01",
+		"02/01Z07:00",
+		"Jan 02",
+		"Jan",
+		"2006-01-02",
+		"2006-01-02 15:04:05",
+		"2006-01-02 15:04:05Z07:00",
+		time.RFC3339,
+	}
+
+	for _, format := range formats {
+		t, err = time.ParseInLocation(format, s, loc)
+
+		if err == nil {
+			return
+		}
+	}
+
+	for i, day := range []time.Weekday{
+		time.Monday,
+		time.Tuesday,
+		time.Wednesday,
+		time.Thursday,
+		time.Friday,
+		time.Saturday,
+		time.Sunday,
+	} {
+		if strings.EqualFold(s, day.String()) {
+			return time.Date(0, 1, 1+i, 0, 0, 0, 0, loc), nil
+		}
+	}
+
+	return t, fmt.Errorf("could not parse time \"%s\" as one of \"%s\"", s, strings.Join(formats, "\", \""))
+}
+
+// StringToTimeHookFunc transforms a string into a time.Time.
+func StringToTimeHookFunc(loc *time.Location) mapstructure.DecodeHookFunc {
+	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+		if f.Kind() != reflect.String {
+			return data, nil
+		}
+
+		if t != reflect.TypeOf(time.Time{}) {
+			return data, nil
+		}
+
+		return parseTime(data.(string), loc)
+	}
+}
+
+func parseFrequency(s string) (Frequency, error) {
+	switch s {
+	case "year":
+		return FrequencyYear, nil
+	case "month":
+		return FrequencyMonth, nil
+	case "week":
+		return FrequencyWeek, nil
+	case "day":
+		return FrequencyDay, nil
+	case "hour":
+		return FrequencyHour, nil
+	case "minute":
+		return FrequencyMinute, nil
+	case "second":
+		return FrequencySecond, nil
+	}
+
+	return nil, fmt.Errorf("unknown frequency \"%s\"", s)
+}
+
+// StringToFrequencyFunc transforms a string into a frequency.
+func StringToFrequencyFunc() mapstructure.DecodeHookFunc {
+	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+		if f.Kind() != reflect.String {
+			return data, nil
+		}
+
+		if t != reflect.TypeOf((*Frequency)(nil)).Elem() {
+			return data, nil
+		}
+
+		return parseFrequency(data.(string))
+	}
 }
