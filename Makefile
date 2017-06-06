@@ -1,9 +1,16 @@
+ifeq ($(OS),Windows_NT)
+EXT:=.exe
+else
+EXT:=
+endif
+
 all: build lint test
 
 build:
 	go build ./conditional
 	go build ./executor
 	go build ./time
+	go build -o bin/gotomate${EXT} ./gotomate
 
 lint:
 	golint ./conditional
