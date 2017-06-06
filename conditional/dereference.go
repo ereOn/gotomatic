@@ -6,7 +6,7 @@ type unclosableCondition struct {
 
 func (unclosableCondition) Close() error { return nil }
 
-// Dereference a condition by making any attempt to close a noop.
+// Dereference a condition by making its Close() function a no-op.
 func Dereference(condition Condition) Condition {
 	return unclosableCondition{Condition: condition}
 }

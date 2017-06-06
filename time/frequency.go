@@ -5,7 +5,11 @@ import "time"
 // Frequency represents a frequency.
 type Frequency interface {
 	getBase(start time.Time, t time.Time) time.Time
+	// Previous gives the previous time in a sequence of times represented by
+	// the frequency and the specified start time.
 	Previous(start time.Time, t time.Time) time.Time
+	// Next gives the next time in a sequence of times represented by the
+	// frequency and the specified start time.
 	Next(start time.Time, t time.Time) time.Time
 }
 
