@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/intelux/gotomatic/executor"
 	gtime "github.com/intelux/gotomatic/time"
 	"github.com/mitchellh/mapstructure"
 )
@@ -42,7 +43,7 @@ type cutOffConditionParams struct {
 	Up       uint
 	Down     uint
 	Period   time.Duration
-	Executor Executor
+	Executor executor.Executor
 }
 
 type externalCommandDeclaration struct {
@@ -83,9 +84,9 @@ func (r *registryImpl) decode(m interface{}, rawVal interface{}) error {
 	decoder, _ := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
 			mapstructure.StringToTimeDurationHookFunc(),
-			StringToTimeHookFunc(time.Local),
-			StringToFrequencyFunc(),
-			MapToExecutor(),
+			stringToTimeHookFunc(time.Local),
+			stringToFrequencyFunc(),
+			mapToExecutor(),
 		),
 		Result: rawVal,
 	})
@@ -196,7 +197,7 @@ func (r *registryImpl) DecodeCondition(input interface{}) (condition Condition, 
 			Up:       0,
 			Down:     3,
 			Period:   time.Second * 5,
-			Executor: FalseExecutor,
+			Executor: executor.FalseExecutor,
 		}
 
 		if err := r.decode(input, &params); err != nil {
@@ -300,8 +301,8 @@ func parseTime(s string, loc *time.Location) (t time.Time, err error) {
 	return t, fmt.Errorf("could not parse time \"%s\" as one of \"%s\"", s, strings.Join(formats, "\", \""))
 }
 
-// StringToTimeHookFunc transforms a string into a time.Time.
-func StringToTimeHookFunc(loc *time.Location) mapstructure.DecodeHookFunc {
+// stringToTimeHookFunc transforms a string into a time.Time.
+func stringToTimeHookFunc(loc *time.Location) mapstructure.DecodeHookFunc {
 	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
 		if f.Kind() != reflect.String {
 			return data, nil
@@ -336,8 +337,8 @@ func parseFrequency(s string) (gtime.Frequency, error) {
 	return nil, fmt.Errorf("unknown frequency \"%s\"", s)
 }
 
-// StringToFrequencyFunc transforms a string into a frequency.
-func StringToFrequencyFunc() mapstructure.DecodeHookFunc {
+// stringToFrequencyFunc transforms a string into a frequency.
+func stringToFrequencyFunc() mapstructure.DecodeHookFunc {
 	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
 		if f.Kind() != reflect.String {
 			return data, nil
@@ -351,14 +352,14 @@ func StringToFrequencyFunc() mapstructure.DecodeHookFunc {
 	}
 }
 
-// MapToExecutor transforms a dict into an external command.
-func MapToExecutor() mapstructure.DecodeHookFunc {
+// mapToExecutor transforms a dict into an external command.
+func mapToExecutor() mapstructure.DecodeHookFunc {
 	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
 		if f.Kind() != reflect.Map {
 			return data, nil
 		}
 
-		if t != reflect.TypeOf((*Executor)(nil)).Elem() {
+		if t != reflect.TypeOf((*executor.Executor)(nil)).Elem() {
 			return data, nil
 		}
 
@@ -382,7 +383,7 @@ func MapToExecutor() mapstructure.DecodeHookFunc {
 				return data, err
 			}
 
-			return CommandExecutor(params.Command, params.Args...), nil
+			return executor.CommandExecutor(params.Command, params.Args...), nil
 		case "http":
 			params := httpExternalCommandDeclaration{
 				Method: "GET",
@@ -398,7 +399,7 @@ func MapToExecutor() mapstructure.DecodeHookFunc {
 				return data, err
 			}
 
-			return HTTPExecutor(params.Method, params.URL, params.StatusCodes, declaration.Timeout), nil
+			return executor.HTTPExecutor(params.Method, params.URL, params.StatusCodes, declaration.Timeout), nil
 		}
 
 		return data, fmt.Errorf("unknown command type \"%s\"", declaration.Type)

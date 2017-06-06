@@ -1,4 +1,4 @@
-package conditional
+package executor
 
 import (
 	"context"

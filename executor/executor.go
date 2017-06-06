@@ -1,4 +1,5 @@
-package conditional
+// Package executor implements executors for cut-off conditions.
+package executor
 
 import (
 	"context"

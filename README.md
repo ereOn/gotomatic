@@ -18,43 +18,64 @@ set from external sources (commands, HTTP requests).
 Here is a simple example:
 
 ```
-// Create a new manual condition, which can be set programmatically.
-condition := conditional.NewManualCondition(false)
-defer condition.Close()
+package main
 
-// Set the condition in another goroutine.
-go condition.Set(true)
+import (
+	"time"
 
-// Wait for the condition to become true.
-condition.Wait(true)
+	"github.com/intelux/gotomatic/conditional"
+)
+
+func main() {
+	// Create a new manual condition, which can be set programmatically.
+	condition := conditional.NewManualCondition(false)
+	defer condition.Close()
+
+	// Set the condition in another goroutine.
+	go condition.Set(true)
+
+	// Wait for the condition to become true.
+	condition.Wait(true)
+}
 ```
 
 Here is a more complex one:
 
 ```
-// Create a new time condition, which is only set between 10:00 and 11:00.
-conditionA := conditional.NewTimeCondition(
-	conditional.NewRecurrentMoment(
-		time.Date(0, 1, 1, 10, 0, 0, 0, time.Local),
-		time.Date(0, 1, 1, 11, 0, 0, 0, time.Local),
-		conditional.FrequencyDay,
-	)
+package main
+
+import (
+	"time"
+
+	"github.com/intelux/gotomatic/conditional"
+	gtime "github.com/intelux/gotomatic/time"
 )
 
-// Create a new time condition, which is only set the first day of each month.
-conditionB := conditional.NewTimeCondition(
-	conditional.NewRecurrentMoment(
-		time.Date(0, 1, 1, 0, 0, 0, 0, time.Local),
-		time.Date(0, 1, 2, 0, 0, 0, 0, time.Local),
-		conditional.FrequencyMonth,
+func main() {
+	// Create a new time condition, which is only set between 10:00 and 11:00.
+	conditionA := conditional.NewTimeCondition(
+		gtime.NewRecurrentMoment(
+			time.Date(0, 1, 1, 10, 0, 0, 0, time.Local),
+			time.Date(0, 1, 1, 11, 0, 0, 0, time.Local),
+			gtime.FrequencyDay,
+		)
 	)
-)
 
-// Create a new condition, which is only set the first day of each month,
-between 10:00 and 11:00.
-condition := conditional.NewCompositeCondition(conditional.OperatorAnd, conditionA, conditionB)
-defer condition.Close()
+	// Create a new time condition, which is only set the first day of each month.
+	conditionB := conditional.NewTimeCondition(
+		gtime.NewRecurrentMoment(
+			time.Date(0, 1, 1, 0, 0, 0, 0, time.Local),
+			time.Date(0, 1, 2, 0, 0, 0, 0, time.Local),
+			gtime.FrequencyMonth,
+		)
+	)
 
-// Wait for the condition to become true.
-condition.Wait(true)
+	// Create a new condition, which is only set the first day of each month,
+	between 10:00 and 11:00.
+	condition := conditional.NewCompositeCondition(conditional.OperatorAnd, conditionA, conditionB)
+	defer condition.Close()
+
+	// Wait for the condition to become true.
+	condition.Wait(true)
+}
 ```

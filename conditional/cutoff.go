@@ -3,6 +3,8 @@ package conditional
 import (
 	"context"
 	"time"
+
+	"github.com/intelux/gotomatic/executor"
 )
 
 type cutOffCondition struct {
@@ -10,7 +12,7 @@ type cutOffCondition struct {
 	upThreshold   uint
 	downThreshold uint
 	period        time.Duration
-	executor      Executor
+	executor      executor.Executor
 	done          chan struct{}
 	counter       uint
 	lastState     bool
@@ -28,7 +30,7 @@ type cutOffCondition struct {
 // Any change of the executor return value resets both counters.
 //
 // The inital status of the condition is the return value of the executor.
-func NewCutOffCondition(upThreshold uint, downThreshold uint, period time.Duration, executor Executor) Condition {
+func NewCutOffCondition(upThreshold uint, downThreshold uint, period time.Duration, executor executor.Executor) Condition {
 	ctx, cancel := context.WithTimeout(context.Background(), period)
 	state := executor(ctx)
 	cancel()
