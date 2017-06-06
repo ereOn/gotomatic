@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	gtime "github.com/intelux/gotomatic/time"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -34,7 +35,7 @@ type compositeConditionParams struct {
 type timeConditionParams struct {
 	Start     time.Time
 	Stop      time.Time
-	Frequency Frequency
+	Frequency gtime.Frequency
 }
 
 type cutOffConditionParams struct {
@@ -182,14 +183,14 @@ func (r *registryImpl) DecodeCondition(input interface{}) (condition Condition, 
 		}
 	case "time":
 		params := timeConditionParams{
-			Frequency: FrequencyYear,
+			Frequency: gtime.FrequencyYear,
 		}
 
 		if err := r.decode(input, &params); err != nil {
 			return nil, err
 		}
 
-		condition = NewTimeCondition(NewRecurrentMoment(params.Start, params.Stop, params.Frequency))
+		condition = NewTimeCondition(gtime.NewRecurrentMoment(params.Start, params.Stop, params.Frequency))
 	case "cut-off":
 		params := cutOffConditionParams{
 			Up:       0,
@@ -314,22 +315,22 @@ func StringToTimeHookFunc(loc *time.Location) mapstructure.DecodeHookFunc {
 	}
 }
 
-func parseFrequency(s string) (Frequency, error) {
+func parseFrequency(s string) (gtime.Frequency, error) {
 	switch s {
 	case "year":
-		return FrequencyYear, nil
+		return gtime.FrequencyYear, nil
 	case "month":
-		return FrequencyMonth, nil
+		return gtime.FrequencyMonth, nil
 	case "week":
-		return FrequencyWeek, nil
+		return gtime.FrequencyWeek, nil
 	case "day":
-		return FrequencyDay, nil
+		return gtime.FrequencyDay, nil
 	case "hour":
-		return FrequencyHour, nil
+		return gtime.FrequencyHour, nil
 	case "minute":
-		return FrequencyMinute, nil
+		return gtime.FrequencyMinute, nil
 	case "second":
-		return FrequencySecond, nil
+		return gtime.FrequencySecond, nil
 	}
 
 	return nil, fmt.Errorf("unknown frequency \"%s\"", s)
@@ -342,7 +343,7 @@ func StringToFrequencyFunc() mapstructure.DecodeHookFunc {
 			return data, nil
 		}
 
-		if t != reflect.TypeOf((*Frequency)(nil)).Elem() {
+		if t != reflect.TypeOf((*gtime.Frequency)(nil)).Elem() {
 			return data, nil
 		}
 

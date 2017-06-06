@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	gtime "github.com/intelux/gotomatic/time"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -203,15 +204,15 @@ func TestParseTimeFailure(t *testing.T) {
 func TestParseFrequency(t *testing.T) {
 	testCases := []struct {
 		Value    string
-		Expected Frequency
+		Expected gtime.Frequency
 	}{
-		{"year", FrequencyYear},
-		{"month", FrequencyMonth},
-		{"week", FrequencyWeek},
-		{"day", FrequencyDay},
-		{"hour", FrequencyHour},
-		{"minute", FrequencyMinute},
-		{"second", FrequencySecond},
+		{"year", gtime.FrequencyYear},
+		{"month", gtime.FrequencyMonth},
+		{"week", gtime.FrequencyWeek},
+		{"day", gtime.FrequencyDay},
+		{"hour", gtime.FrequencyHour},
+		{"minute", gtime.FrequencyMinute},
+		{"second", gtime.FrequencySecond},
 	}
 
 	for _, testCase := range testCases {
