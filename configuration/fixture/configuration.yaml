@@ -1,0 +1,9 @@
+conditions:
+  - name: a
+    type: manual
+  - name: b
+    type: and
+    conditions:
+      - a
+      - type: manual
+      - type: manual
