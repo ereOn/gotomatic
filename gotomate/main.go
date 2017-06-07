@@ -36,6 +36,8 @@ var rootCmd = &cobra.Command{
 			config = configuration.New()
 		}
 
+		defer config.Close()
+
 		fmt.Println(config)
 
 		return nil

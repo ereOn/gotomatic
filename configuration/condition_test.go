@@ -73,7 +73,7 @@ func TestMapToCondition(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.Fixture, func(t *testing.T) {
 			configuration := newConfigurationImpl()
-			defer configuration.Clear()
+			defer configuration.Close()
 
 			var condition conditional.Condition
 
@@ -115,7 +115,7 @@ func TestMapToConditionList(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.Fixture, func(t *testing.T) {
 			configuration := newConfigurationImpl()
-			defer configuration.Clear()
+			defer configuration.Close()
 
 			var conditions []conditional.Condition
 

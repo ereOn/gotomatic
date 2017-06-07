@@ -25,7 +25,15 @@ type Configuration interface {
 	AddCondition(name string, condition conditional.Condition) error
 
 	// Clear the configuration, freeing any resource associated with it.
+	//
+	// The configuration can be reused again after a call to Clear.
 	Clear()
+
+	// Close the configuration.
+	//
+	// Must be called when the configuration is no longer needed, to free all
+	// its resources.
+	Close()
 }
 
 // New creates a new empty configuration.
@@ -105,3 +113,5 @@ func (c *configurationImpl) Clear() {
 
 	c.namedConditions = nil
 }
+
+func (c *configurationImpl) Close() { c.Clear() }
