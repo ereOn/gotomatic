@@ -117,7 +117,7 @@ func (c *configurationImpl) mapToCondition() mapstructure.DecodeHookFunc {
 				return data, err
 			}
 
-			return conditional.NewCompositeCondition(conditional.OperatorAnd, params.Conditions...), nil
+			condition = conditional.NewCompositeCondition(conditional.OperatorAnd, params.Conditions...)
 		case "or":
 			var params compositeConditionParams
 
@@ -125,7 +125,7 @@ func (c *configurationImpl) mapToCondition() mapstructure.DecodeHookFunc {
 				return data, err
 			}
 
-			return conditional.NewCompositeCondition(conditional.OperatorOr, params.Conditions...), nil
+			condition = conditional.NewCompositeCondition(conditional.OperatorOr, params.Conditions...)
 		case "xor":
 			var params compositeConditionParams
 
@@ -133,7 +133,7 @@ func (c *configurationImpl) mapToCondition() mapstructure.DecodeHookFunc {
 				return data, err
 			}
 
-			return conditional.NewCompositeCondition(conditional.OperatorXor, params.Conditions...), nil
+			condition = conditional.NewCompositeCondition(conditional.OperatorXor, params.Conditions...)
 		case "time":
 			params := timeConditionParams{
 				Frequency: gtime.FrequencyYear,

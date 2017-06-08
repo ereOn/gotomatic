@@ -1,0 +1,14 @@
+conditions:
+- type: and
+  name: alarm
+  conditions:
+  - type: time
+    name: morning
+    start: 7:00
+    stop: 7:30
+    frequency: day
+  - type: time
+    name: working-day
+    start: monday
+    stop: saturday
+    frequency: week

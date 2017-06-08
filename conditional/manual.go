@@ -4,6 +4,12 @@ import (
 	"sync"
 )
 
+// Settable is the interface for all types whose state can be set.
+type Settable interface {
+	// Set the satisfied state to the specified value.
+	Set(satisfied bool)
+}
+
 // ManualCondition is a condition that can be set or unset explicitely.
 type ManualCondition struct {
 	lock      sync.Mutex
