@@ -1,3 +1,5 @@
+MODULES=conditional configuration executor time trigger
+
 ifeq ($(OS),Windows_NT)
 EXT:=.exe
 else
@@ -7,40 +9,26 @@ endif
 all: build lint test
 
 build:
-	go build ./conditional
-	go build ./configuration
-	go build ./executor
-	go build ./time
 	go build -o bin/gotomate${EXT} ./gotomate
 
 lint:
-	golint ./conditional
-	go vet ./conditional
-	golint ./configuration
-	go vet ./configuration
-	golint ./executor
-	go vet ./executor
-	golint ./time
-	go vet ./time
+	for MODULE in $(MODULES); do \
+		golint ./$${MODULE}; \
+		go vet ./$${MODULE}; \
+	done
 
 test:
-	go test -v --coverprofile coverage.conditional ./conditional --trace=trace.conditional
-	go test -v --coverprofile coverage.configuration ./configuration --trace=trace.configuration
-	go test -v --coverprofile coverage.executor ./executor --trace=trace.executor
-	go test -v --coverprofile coverage.time ./time --trace=trace.time
-	go tool cover -func=coverage.conditional
-	go tool cover -func=coverage.configuration
-	go tool cover -func=coverage.executor
-	go tool cover -func=coverage.time
+	for MODULE in $(MODULES); do \
+		go test -v --coverprofile coverage.$${MODULE} ./$${MODULE} --trace=trace.$${MODULE}; \
+		go tool cover -func=coverage.$${MODULE}; \
+	done
 
 coverage: test
-	go tool cover -html=coverage.conditional
-	go tool cover -html=coverage.configuration
-	go tool cover -html=coverage.executor
-	go tool cover -html=coverage.time
+	for MODULE in $(MODULES); do \
+		go tool cover -html=coverage.$${MODULE}; \
+	done
 
 trace: test
-	go tool trace trace.configuration
-	go tool trace trace.conditional
-	go tool trace trace.executor
-	go tool trace trace.time
+	for MODULE in $(MODULES); do \
+		go tool trace trace.$${MODULE}; \
+	done
