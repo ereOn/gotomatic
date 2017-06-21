@@ -1,0 +1,10 @@
+type: command
+command: echo
+args:
+  - a
+  - b
+env:
+  FOO: "1"
+  BAR: "2"
+condition:
+  type: manual

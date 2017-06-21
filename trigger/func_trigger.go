@@ -6,8 +6,8 @@ type funcTrigger struct {
 	f func(w io.Writer, name string, state bool) error
 }
 
-// TriggerFunc creates a trigger from a function.
-func TriggerFunc(f func(io.Writer, string, bool) error) Trigger {
+// Func creates a trigger from a function.
+func Func(f func(io.Writer, string, bool) error) Trigger {
 	return funcTrigger{f: f}
 }
 

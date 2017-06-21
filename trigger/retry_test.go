@@ -18,7 +18,7 @@ func TestRetry(t *testing.T) {
 		return nil
 	}
 
-	trigger := Retry(TriggerFunc(f), 3, 0)
+	trigger := Retry(Func(f), 3, 0)
 	err := trigger.run(ioutil.Discard, "", true)
 
 	if err != nil {
@@ -31,7 +31,7 @@ func TestRetryFailure(t *testing.T) {
 		return errors.New("fail")
 	}
 
-	trigger := Retry(TriggerFunc(f), 3, 0)
+	trigger := Retry(Func(f), 3, 0)
 	err := trigger.run(ioutil.Discard, "", true)
 
 	if err == nil {

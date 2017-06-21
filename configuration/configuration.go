@@ -9,6 +9,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/intelux/gotomatic/conditional"
+	"github.com/intelux/gotomatic/trigger"
 )
 
 // Configuration represents a configuration.
@@ -59,8 +60,15 @@ func Load(r io.Reader) (Configuration, error) {
 	return Decode(data)
 }
 
+// ConditionTrigger represents a trigger linked to a conditional.Condition.
+type ConditionTrigger struct {
+	trigger.Trigger
+	Condition conditional.Condition
+}
+
 type configurationDecl struct {
 	Conditions []conditional.Condition
+	Triggers   []ConditionTrigger
 }
 
 // Decode a configuration.

@@ -20,7 +20,7 @@ func TestTriggerFunc(t *testing.T) {
 		return nil
 	}
 
-	trigger := TriggerFunc(f)
+	trigger := Func(f)
 
 	buf := &bytes.Buffer{}
 	err := trigger.run(buf, "foo", true)

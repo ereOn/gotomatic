@@ -15,8 +15,10 @@ type commandTrigger struct {
 // NewCommandTrigger instantiates a new trigger that executes a command.
 //
 // Two environment variables are added before the command gets executed:
+//
 // - `GOTOMATIC_CONDITION_NAME`: The name of the condition whose state changed,
 // if it has one.
+//
 // - `GOTOMATIC_CONDITION_STATE`: The state of the condition, as 0 or 1.
 func NewCommandTrigger(cmd string, args []string, env []string) Trigger {
 	return &commandTrigger{

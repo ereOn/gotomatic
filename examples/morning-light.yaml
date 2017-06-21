@@ -12,3 +12,6 @@ conditions:
     start: monday
     stop: saturday
     frequency: week
+triggers:
+  - type: command
+    condition: alarm

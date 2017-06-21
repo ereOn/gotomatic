@@ -16,7 +16,7 @@ func TestWatch(t *testing.T) {
 	triggered := make(chan bool)
 	defer close(triggered)
 
-	trigger := TriggerFunc(func(w io.Writer, name string, state bool) error {
+	trigger := Func(func(w io.Writer, name string, state bool) error {
 		triggered <- state
 		return nil
 	})
@@ -46,7 +46,7 @@ func TestWatchTriggerFailure(t *testing.T) {
 	result := make(chan error)
 	fail := errors.New("fail")
 
-	trigger := TriggerFunc(func(w io.Writer, name string, state bool) error {
+	trigger := Func(func(w io.Writer, name string, state bool) error {
 		return fail
 	})
 
