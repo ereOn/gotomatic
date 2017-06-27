@@ -1,63 +1,56 @@
 package trigger
 
 import (
+	"context"
 	"errors"
-	"io"
-	"io/ioutil"
+	"fmt"
 	"testing"
 
 	"github.com/intelux/gotomatic/conditional"
 )
 
 func TestWatch(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	condition := conditional.NewManualCondition(false)
-	result := make(chan error)
+	wasUp := false
 
-	triggered := make(chan bool)
-	defer close(triggered)
-
-	trigger := Func(func(w io.Writer, name string, state bool) error {
-		triggered <- state
+	up := FuncAction(func(context.Context) error {
+		fmt.Println("up")
+		wasUp = true
+		condition.Set(false)
 		return nil
 	})
 
-	go func() {
-		defer close(result)
-		result <- Watch(condition, trigger, ioutil.Discard, "name", true)
-	}()
+	down := FuncAction(func(context.Context) error {
+		fmt.Println("down")
+		if wasUp {
+			return errors.New("fail")
+		}
 
-	condition.Set(true)
-
-	if state := <-triggered; !state {
-		t.Error("expected state to be true")
-	}
-
-	condition.Close()
-
-	if err := <-result; err != conditional.ErrConditionClosed {
-		t.Errorf("expected %s error but got: %s", conditional.ErrConditionClosed, err)
-	}
-}
-
-func TestWatchTriggerFailure(t *testing.T) {
-	condition := conditional.NewManualCondition(false)
-	defer condition.Close()
-
-	result := make(chan error)
-	fail := errors.New("fail")
-
-	trigger := Func(func(w io.Writer, name string, state bool) error {
-		return fail
+		condition.Set(true)
+		return nil
 	})
 
-	go func() {
-		defer close(result)
-		result <- Watch(condition, trigger, ioutil.Discard, "name", true)
-	}()
+	trigger := Trigger{
+		Up:   up,
+		Down: down,
+	}
 
-	condition.Set(true)
+	go condition.Set(true)
+	err := Watch(ctx, condition, trigger)
 
-	if err := <-result; err != fail {
-		t.Errorf("expected %s error but got: %s", fail, err)
+	if err == nil {
+		t.Errorf("expected an error")
+	}
+
+	cancel()
+
+	err = Watch(ctx, condition, trigger)
+
+	if err != nil {
+		t.Errorf("expected no error but got: %s", err)
 	}
 }

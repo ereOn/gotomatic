@@ -1,15 +1,14 @@
 package trigger
 
 import (
+	"context"
 	"errors"
-	"io"
-	"io/ioutil"
 	"testing"
 )
 
 func TestRetry(t *testing.T) {
 	c := 0
-	f := func(w io.Writer, name string, state bool) error {
+	f := func(ctx context.Context) error {
 		if c < 2 {
 			c++
 			return errors.New("fail")
@@ -18,8 +17,9 @@ func TestRetry(t *testing.T) {
 		return nil
 	}
 
-	trigger := Retry(Func(f), 3, 0)
-	err := trigger.run(ioutil.Discard, "", true)
+	action := Retry(FuncAction(f), 3, 0)
+	ctx := context.Background()
+	err := action.run(ctx)
 
 	if err != nil {
 		t.Errorf("expected no error but got: %s", err)
@@ -27,12 +27,13 @@ func TestRetry(t *testing.T) {
 }
 
 func TestRetryFailure(t *testing.T) {
-	f := func(w io.Writer, name string, state bool) error {
+	f := func(ctx context.Context) error {
 		return errors.New("fail")
 	}
 
-	trigger := Retry(Func(f), 3, 0)
-	err := trigger.run(ioutil.Discard, "", true)
+	action := Retry(FuncAction(f), 3, 0)
+	ctx := context.Background()
+	err := action.run(ctx)
 
 	if err == nil {
 		t.Error("expected an error but didn't get one")
