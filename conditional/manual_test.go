@@ -13,6 +13,12 @@ func TestManualCondition(t *testing.T) {
 	defer assertCloseCondition(t, condition)
 	assertConditionState(t, condition, true, "initialization to true")
 
+	ch := make(chan bool, 10)
+	defer close(ch)
+	observer := NewChannelObserver(ch)
+	unregister := condition.Register(observer)
+	defer unregister()
+
 	condition.Set(true)
 	assertConditionState(t, condition, true, "first set to true")
 

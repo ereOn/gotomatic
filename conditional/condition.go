@@ -37,4 +37,10 @@ type Condition interface {
 	//
 	// Calling Close() twice or more has no effect.
 	Close() error
+
+	// Register an observer for changes.
+	//
+	// Any change will cause the following observer to be called with the
+	// current state until the returned cancel function is called.
+	Register(ConditionStateObserver) func()
 }

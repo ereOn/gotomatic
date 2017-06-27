@@ -15,6 +15,7 @@ type ManualCondition struct {
 	lock      sync.Mutex
 	satisfied bool
 	channels  []chan error
+	observers []ConditionStateObserver
 }
 
 // NewManualCondition instantiates a new ManualCondition in the specified
@@ -22,7 +23,6 @@ type ManualCondition struct {
 func NewManualCondition(satisfied bool) *ManualCondition {
 	return &ManualCondition{
 		satisfied: satisfied,
-		channels:  make([]chan error, 0, 0),
 	}
 }
 
@@ -81,9 +81,36 @@ func (c *ManualCondition) Close() error {
 		close(channel)
 	}
 
-	c.channels = make([]chan error, 0, 0)
+	c.channels = nil
+	c.observers = nil
 
 	return nil
+}
+
+// Register an observer for changes.
+//
+// Any change will cause the following observer to be called with the
+// current state until the returned cancel function is called.
+func (c *ManualCondition) Register(observer ConditionStateObserver) func() {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	c.observers = append(c.observers, observer)
+
+	return func() { c.unregister(observer) }
+}
+
+// Unregister a callback for changes.
+func (c *ManualCondition) unregister(observer ConditionStateObserver) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	for i, ob := range c.observers {
+		if ob == observer {
+			c.observers = append(c.observers[:i], c.observers[i+1:]...)
+			return
+		}
+	}
 }
 
 // Set defines the ManualCondition satisfied state explicitely.
@@ -102,5 +129,9 @@ func (c *ManualCondition) Set(satisfied bool) {
 		}
 
 		c.channels = make([]chan error, 0, 0)
+
+		for _, observer := range c.observers {
+			observer.OnChange(satisfied)
+		}
 	}
 }
