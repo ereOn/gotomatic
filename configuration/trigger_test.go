@@ -10,8 +10,9 @@ func TestMapToConditionTrigger(t *testing.T) {
 		ExpectFailure bool
 	}{
 		{"fixture/invalid.yaml", true},
-		{"fixture/condition-trigger-invalid-type.yaml", true},
 		{"fixture/condition-trigger-invalid-params.yaml", true},
+		{"fixture/condition-trigger-invalid-params-invalid-action.yaml", true},
+		{"fixture/condition-trigger-invalid-params-invalid-action-command.yaml", true},
 		{"fixture/condition-trigger-invalid-params-no-command.yaml", true},
 		{"fixture/condition-trigger-unknown-type.yaml", true},
 		{"fixture/condition-trigger-invalid-condition.yaml", true},

@@ -7,3 +7,11 @@ conditions:
       - a
       - type: manual
       - type: manual
+triggers:
+  - condition: a
+    up:
+      type: command
+      command: echo
+    down:
+      type: command
+      command: ls

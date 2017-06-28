@@ -1,1 +1,2 @@
-type: command
+up:
+  type: command

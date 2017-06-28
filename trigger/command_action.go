@@ -12,7 +12,7 @@ type commandAction struct {
 	env  []string
 }
 
-// NewCommanAction instantiates a new action that executes a command.
+// NewCommandAction instantiates a new action that executes a command.
 //
 // Two environment variables are added before the command gets executed:
 //

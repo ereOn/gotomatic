@@ -1,3 +1,4 @@
-type: command
-command: echo
+up:
+  type: command
+  command: echo
 condition: 2

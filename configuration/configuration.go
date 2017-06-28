@@ -66,19 +66,23 @@ type ConditionTrigger struct {
 	Condition conditional.Condition
 }
 
-type configurationDecl struct {
-	Conditions []conditional.Condition
-	Triggers   []ConditionTrigger
-}
-
 // Decode a configuration.
 func Decode(data interface{}) (Configuration, error) {
 	configuration := newConfigurationImpl()
 
-	var decl configurationDecl
+	var decl struct {
+		Conditions []conditional.Condition
+		Triggers   []ConditionTrigger
+	}
 
 	if err := configuration.decode(data, &decl); err != nil {
 		return nil, err
+	}
+
+	configuration.triggers = make([]trigger.Trigger, len(decl.Triggers))
+
+	for i, trigger := range decl.Triggers {
+		configuration.triggers[i] = trigger.Trigger
 	}
 
 	return configuration, nil
@@ -86,6 +90,7 @@ func Decode(data interface{}) (Configuration, error) {
 
 type configurationImpl struct {
 	namedConditions map[string]conditional.Condition
+	triggers        []trigger.Trigger
 }
 
 func newConfigurationImpl() *configurationImpl {

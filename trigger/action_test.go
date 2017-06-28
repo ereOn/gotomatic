@@ -23,7 +23,7 @@ func TestWithConditionState(t *testing.T) {
 	ctx := context.Background()
 
 	if state := GetConditionState(ctx); state != nil {
-		t.Errorf("expected no state, but got: %s", *state)
+		t.Errorf("expected no state, but got: %t", *state)
 	}
 
 	ctx = WithConditionState(ctx, true)
