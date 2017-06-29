@@ -1,4 +1,0 @@
-up:
-  type: command
-  command: echo
-condition: 2

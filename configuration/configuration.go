@@ -2,6 +2,7 @@
 package configuration
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -24,6 +25,10 @@ type Configuration interface {
 	//
 	// The caller should never use the passed-in condition directly ever again.
 	AddCondition(name string, condition conditional.Condition) error
+
+	// Watch the configuration triggers until the specified context expires or
+	// the watch fails.
+	Watch(ctx context.Context) error
 
 	// Clear the configuration, freeing any resource associated with it.
 	//
@@ -60,8 +65,7 @@ func Load(r io.Reader) (Configuration, error) {
 	return Decode(data)
 }
 
-// ConditionTrigger represents a trigger linked to a conditional.Condition.
-type ConditionTrigger struct {
+type conditionTrigger struct {
 	trigger.Trigger
 	Condition conditional.Condition
 }
@@ -72,17 +76,10 @@ func Decode(data interface{}) (Configuration, error) {
 
 	var decl struct {
 		Conditions []conditional.Condition
-		Triggers   []ConditionTrigger
 	}
 
 	if err := configuration.decode(data, &decl); err != nil {
 		return nil, err
-	}
-
-	configuration.triggers = make([]trigger.Trigger, len(decl.Triggers))
-
-	for i, trigger := range decl.Triggers {
-		configuration.triggers[i] = trigger.Trigger
 	}
 
 	return configuration, nil
@@ -90,7 +87,7 @@ func Decode(data interface{}) (Configuration, error) {
 
 type configurationImpl struct {
 	namedConditions map[string]conditional.Condition
-	triggers        []trigger.Trigger
+	triggers        []conditionTrigger
 }
 
 func newConfigurationImpl() *configurationImpl {
@@ -119,6 +116,27 @@ func (c *configurationImpl) AddCondition(name string, condition conditional.Cond
 	return nil
 }
 
+func (c *configurationImpl) Watch(ctx context.Context) error {
+	ch := make(chan error, len(c.triggers))
+	defer close(ch)
+
+	for _, tr := range c.triggers {
+		go func(tr conditionTrigger) {
+			// TODO: inject the condition name in the context.
+			if err := trigger.Watch(ctx, tr.Condition, tr.Trigger); err != nil {
+				ch <- err
+			}
+		}(tr)
+	}
+
+	select {
+	case <-ctx.Done():
+		return nil
+	case err := <-ch:
+		return err
+	}
+}
+
 func (c *configurationImpl) Clear() {
 	for _, condition := range c.namedConditions {
 		condition.Close()
@@ -127,4 +145,6 @@ func (c *configurationImpl) Clear() {
 	c.namedConditions = nil
 }
 
-func (c *configurationImpl) Close() { c.Clear() }
+func (c *configurationImpl) Close() {
+	c.Clear()
+}

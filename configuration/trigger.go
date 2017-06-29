@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/intelux/gotomatic/conditional"
 	"github.com/intelux/gotomatic/trigger"
 	"github.com/mitchellh/mapstructure"
 )
@@ -63,44 +62,5 @@ func (c *configurationImpl) mapToAction() mapstructure.DecodeHookFunc {
 		}
 
 		return action, nil
-	}
-}
-
-func (c *configurationImpl) mapToConditionTrigger() mapstructure.DecodeHookFunc {
-	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
-		if f.Kind() != reflect.Map {
-			return data, nil
-		}
-
-		if t != reflect.TypeOf((*ConditionTrigger)(nil)).Elem() {
-			return data, nil
-		}
-
-		var trigger trigger.Trigger
-
-		err := c.decode(data, &trigger)
-
-		if err != nil {
-			return data, err
-		}
-
-		decl := struct {
-			Condition conditional.Condition
-		}{}
-
-		err = c.decode(data, &decl)
-
-		if err != nil {
-			return data, err
-		}
-
-		if decl.Condition == nil {
-			return data, errors.New("a condition is mandatory")
-		}
-
-		return ConditionTrigger{
-			Trigger:   trigger,
-			Condition: decl.Condition,
-		}, nil
 	}
 }

@@ -14,7 +14,6 @@ func (c *configurationImpl) decode(m interface{}, rawVal interface{}) error {
 			stringToFrequencyFunc(),
 			mapToExecutor(),
 			c.mapToAction(),
-			c.mapToConditionTrigger(),
 			c.mapToCondition(),
 			c.stringToCondition(),
 		),

@@ -2,22 +2,21 @@ package configuration
 
 import (
 	"testing"
+
+	"github.com/intelux/gotomatic/trigger"
 )
 
-func TestMapToConditionTrigger(t *testing.T) {
+func TestMapToAction(t *testing.T) {
 	testCases := []struct {
 		Fixture       string
 		ExpectFailure bool
 	}{
 		{"fixture/invalid.yaml", true},
-		{"fixture/condition-trigger-invalid-params.yaml", true},
-		{"fixture/condition-trigger-invalid-params-invalid-action.yaml", true},
-		{"fixture/condition-trigger-invalid-params-invalid-action-command.yaml", true},
-		{"fixture/condition-trigger-invalid-params-no-command.yaml", true},
-		{"fixture/condition-trigger-unknown-type.yaml", true},
-		{"fixture/condition-trigger-invalid-condition.yaml", true},
-		{"fixture/condition-trigger-missing-condition.yaml", true},
-		{"fixture/condition-trigger.yaml", false},
+		{"fixture/action-invalid-type.yaml", true},
+		{"fixture/action-unknown-type.yaml", true},
+		{"fixture/action-command-invalid-params.yaml", true},
+		{"fixture/action-command-empty-command.yaml", true},
+		{"fixture/action-command.yaml", false},
 	}
 
 	for _, testCase := range testCases {
@@ -25,10 +24,10 @@ func TestMapToConditionTrigger(t *testing.T) {
 			configuration := newConfigurationImpl()
 			defer configuration.Close()
 
-			var conditionTrigger ConditionTrigger
+			var action trigger.Action
 
 			data := readYAMLFixture(testCase.Fixture)
-			err := configuration.decode(data, &conditionTrigger)
+			err := configuration.decode(data, &action)
 
 			if testCase.ExpectFailure {
 				if err == nil {

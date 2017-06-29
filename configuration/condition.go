@@ -8,12 +8,14 @@ import (
 	"github.com/intelux/gotomatic/conditional"
 	"github.com/intelux/gotomatic/executor"
 	gtime "github.com/intelux/gotomatic/time"
+	"github.com/intelux/gotomatic/trigger"
 	"github.com/mitchellh/mapstructure"
 )
 
 type conditionDecl struct {
-	Name string
-	Type string
+	Name    string
+	Type    string
+	Trigger *trigger.Trigger
 }
 
 type manualConditionParams struct {
@@ -167,6 +169,13 @@ func (c *configurationImpl) mapToCondition() mapstructure.DecodeHookFunc {
 			}
 
 			condition = conditional.Dereference(condition)
+		}
+
+		if declaration.Trigger != nil {
+			c.triggers = append(c.triggers, conditionTrigger{
+				Trigger:   *declaration.Trigger,
+				Condition: condition,
+			})
 		}
 
 		return condition, nil

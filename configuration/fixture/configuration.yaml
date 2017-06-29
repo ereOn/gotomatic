@@ -1,17 +1,16 @@
 conditions:
   - name: a
     type: manual
+    trigger:
+      up:
+        type: command
+        command: nonexisting
+      down:
+        type: command
+        command: ls
   - name: b
     type: and
     conditions:
       - a
       - type: manual
       - type: manual
-triggers:
-  - condition: a
-    up:
-      type: command
-      command: echo
-    down:
-      type: command
-      command: ls
