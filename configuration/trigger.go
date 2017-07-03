@@ -3,6 +3,7 @@ package configuration
 import (
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 
 	"github.com/intelux/gotomatic/trigger"
@@ -49,7 +50,7 @@ func (c *configurationImpl) mapToAction() mapstructure.DecodeHookFunc {
 				return data, errors.New("a command is mandatory for that action type")
 			}
 
-			env := make([]string, 0)
+			env := os.Environ()
 
 			for key, value := range params.Env {
 				env = append(env, fmt.Sprintf("%s=%s", key, value))

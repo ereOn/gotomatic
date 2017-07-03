@@ -12,6 +12,21 @@ conditions:
     start: monday
     stop: saturday
     frequency: week
-triggers:
-  - type: command
-    condition: alarm
+- type: time
+  name: test
+  start: 00:37
+  stop: 00:38
+  frequency: day
+  trigger:
+    up:
+      type: command
+      command: ion
+      args: ["on", "bedroom"]
+      env:
+        ION_DEVICE: tcp://192.168.0.3:3002
+    down:
+      type: command
+      command: ion
+      args: ["off", "bedroom"]
+      env:
+        ION_DEVICE: tcp://192.168.0.3:3002

@@ -95,6 +95,8 @@ func (c *ManualCondition) Register(observer ConditionStateObserver) func() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	observer.OnChange(c.satisfied)
+
 	c.observers = append(c.observers, observer)
 
 	return func() { c.unregister(observer) }

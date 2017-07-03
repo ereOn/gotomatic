@@ -1,9 +1,11 @@
 package trigger
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os/exec"
+	"strings"
 )
 
 type commandAction struct {
@@ -46,5 +48,13 @@ func (t *commandAction) run(ctx context.Context) error {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("GOTOMATIC_CONDITION_STATE=%d", stateInt))
 	}
 
-	return cmd.Run()
+	output := &bytes.Buffer{}
+	cmd.Stderr = output
+	cmd.Stdout = output
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("executing \"%s %s\": %s\nOutput was:\n%s", t.cmd, strings.Join(t.args, " "), err, output)
+	}
+
+	return nil
 }

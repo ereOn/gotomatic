@@ -3,6 +3,7 @@ package trigger
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/intelux/gotomatic/conditional"
 )
@@ -34,17 +35,21 @@ func Watch(ctx context.Context, condition conditional.Condition, trigger Trigger
 		select {
 		case state := <-stateCh:
 			var action Action
+			var errPrefix string
 
 			if state {
 				action = trigger.Up
+				errPrefix = "trigger up"
 			} else {
 				action = trigger.Down
+				errPrefix = "trigger down"
 			}
 
 			if action != nil {
 				ctx := WithConditionState(ctx, state)
 
 				if err = action.run(ctx); err != nil {
+					err = fmt.Errorf("%s: %s", errPrefix, err)
 					cancel()
 					return
 				}

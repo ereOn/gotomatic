@@ -3,7 +3,6 @@ package trigger
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/intelux/gotomatic/conditional"
@@ -15,23 +14,13 @@ func TestWatch(t *testing.T) {
 	defer cancel()
 
 	condition := conditional.NewManualCondition(false)
-	wasUp := false
 
 	up := FuncAction(func(context.Context) error {
-		fmt.Println("up")
-		wasUp = true
-		condition.Set(false)
-		return nil
+		return errors.New("fail")
 	})
 
 	down := FuncAction(func(context.Context) error {
-		fmt.Println("down")
-		if wasUp {
-			return errors.New("fail")
-		}
-
-		condition.Set(true)
-		return nil
+		return errors.New("fail")
 	})
 
 	trigger := Trigger{
@@ -39,7 +28,6 @@ func TestWatch(t *testing.T) {
 		Down: down,
 	}
 
-	go condition.Set(true)
 	err := Watch(ctx, condition, trigger)
 
 	if err == nil {

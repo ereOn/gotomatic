@@ -69,10 +69,22 @@ var rootCmd = &cobra.Command{
 		fmt.Printf("Started HTTP server on %s.\n", endpoint)
 		defer fmt.Printf("Stopped HTTP server.\n")
 
+		ctx := context.Background()
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		go func() {
+			if err := config.Watch(ctx); err != nil {
+				errorCh <- err
+			}
+		}()
+
 		select {
 		case <-stop:
 			fmt.Printf("Interruption. Exiting...\n")
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+			cancel()
+
+			ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 			defer cancel()
 
 			server.Shutdown(ctx)
